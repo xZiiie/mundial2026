@@ -67,6 +67,12 @@
     .player-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);flex-wrap:wrap}
     .admin-points{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .admin-points small{font-size:10px;color:var(--color-text-tertiary)}
+    .pred-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+    .pred-table th,.pred-table td{padding:6px 4px;border-bottom:0.5px solid var(--color-border-tertiary);text-align:center}
+    .pred-table th:first-child,.pred-table td:first-child{text-align:left}
+    .pred-table th{font-size:10px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+    .pred-ok{font-weight:600;color:#185FA5}
+    .pred-empty{color:var(--color-text-tertiary)}
     input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     input[type=number]{-moz-appearance:textfield}
   </style>
@@ -124,6 +130,7 @@
       <button class="tab active" id="tab_tTyp" onclick="switchTab('tTyp')"><i class="ti ti-pencil" aria-hidden="true"></i> Typy</button>
       <button class="tab" id="tab_tWyniki" onclick="switchTab('tWyniki')"><i class="ti ti-trophy" aria-hidden="true"></i> Wyniki</button>
       <button class="tab" id="tab_tTabela" onclick="switchTab('tTabela')"><i class="ti ti-list-numbers" aria-hidden="true"></i> Tabela</button>
+      <button class="tab" id="tab_tTypyGraczy" onclick="switchTab('tTypyGraczy')"><i class="ti ti-users" aria-hidden="true"></i> Typy graczy</button>
       <button class="tab" id="adminTab" style="display:none" onclick="switchTab('tAdmin')"><i class="ti ti-settings" aria-hidden="true"></i> Admin</button>
     </div>
 
@@ -156,6 +163,14 @@
         <span class="badge b3">3 pkt</span> dokładny wynik &nbsp;
         <span class="badge b1">1 pkt</span> dobry zwycięzca lub remis
       </div>
+    </div>
+
+    <div id="tTypyGraczy" class="section">
+      <div class="info-box">
+        <i class="ti ti-users" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
+        <span>Typy innych graczy są widoczne od razu — niezależnie od blokady i oficjalnego wyniku.</span>
+      </div>
+      <div id="allPredictionsList"></div>
     </div>
 
     <div id="tAdmin" class="section">
@@ -437,7 +452,7 @@ function getManualPoints(nick){ return parseInt(pointAdjustments[keyNick(nick)] 
 
 window.showRegView=function(){ document.getElementById("viewLogin").style.display="none"; document.getElementById("viewRegister").style.display="block"; document.getElementById("viewMain").style.display="none"; document.getElementById("regErr").textContent=""; }
 window.showLoginView=function(){ document.getElementById("viewLogin").style.display="block"; document.getElementById("viewRegister").style.display="none"; document.getElementById("viewMain").style.display="none"; document.getElementById("loginErr").textContent=""; document.getElementById("loginPass").value=""; }
-window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin') renderAdminList(); }
+window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin') renderAdminList(); if(id==='tTypyGraczy') renderAllPredictions(); }
 window.doLogout=function(){ currentUser=null; localStorage.removeItem("currentUser"); if(unsubMain) unsubMain(); showLoginView(); switchTab("tTyp"); }
 
 window.doRegister=async function(){
@@ -481,7 +496,7 @@ async function enterApp(){
   rerenderAll();
 }
 
-function rerenderAll(){ if(!currentUser)return; renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); if(isAdmin()) renderAdminList(); }
+function rerenderAll(){ if(!currentUser)return; renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); renderAllPredictions(); if(isAdmin()) renderAdminList(); }
 
 function renderChampionPicker(){
   const box=document.getElementById("championPickBox");
@@ -618,6 +633,67 @@ function renderResults(){
   });
   if(any) list.appendChild(card);
   else list.innerHTML=`<div class="card" style="color:var(--color-text-tertiary);font-size:13px;padding:15px">Brak typów do pokazania. Wpisz swoje typy!</div>`;
+}
+
+
+function renderAllPredictions(){
+  const list=document.getElementById("allPredictionsList");
+  if(!list)return;
+  list.innerHTML="";
+  const players=usersCache.filter(u=>u && u.nick && keyNick(u.nick)!==ADMIN_NICK).map(u=>u.nick).sort((a,b)=>a.localeCompare(b,"pl"));
+  if(!players.length){
+    list.innerHTML=`<div class="card" style="color:var(--color-text-tertiary);font-size:13px">Brak graczy.</div>`;
+    return;
+  }
+
+  const champCard=document.createElement("div");
+  champCard.className="card";
+  champCard.innerHTML=`<span class="label">Typy mistrza świata</span>`;
+  if(officialChampion){
+    let rows=players.map(nick=>{
+      const pick=getChampionForNick(nick);
+      const pts=championScoreForNick(nick);
+      return `<tr><td>${nick}</td><td class="${pick ? "pred-ok" : "pred-empty"}">${pick || "brak"}</td><td>${pts ? "+"+pts : "0"} pkt</td></tr>`;
+    }).join("");
+    champCard.innerHTML += `<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px">Oficjalny mistrz: <b>${officialChampion}</b></div>
+      <table class="pred-table"><thead><tr><th>Gracz</th><th>Typ</th><th>Punkty</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else {
+    const myPick=getChampionForNick(currentUser.nick);
+    champCard.innerHTML += `<div style="font-size:12px;color:var(--color-text-tertiary)">Typy mistrza będą widoczne po ustawieniu oficjalnego mistrza. Twój typ: <b>${myPick || "brak"}</b></div>`;
+  }
+  list.appendChild(champCard);
+
+  let any=false;
+  let lastDate="";
+  let currentCard=null;
+  sortedMatches().forEach(m=>{
+    const dateLabel=dateOnlyLabel(m);
+    if(dateLabel!==lastDate){
+      currentCard=document.createElement("div");
+      currentCard.className="card";
+      currentCard.innerHTML=`<span class="label">${dateLabel}</span>`;
+      list.appendChild(currentCard);
+      lastDate=dateLabel;
+    }
+    const off=officialResults[m.id];
+    const rows=players.map(nick=>{
+      const pred=getPredsForNick(nick)[m.id];
+      const pts=calcPts(pred,off);
+      const score=pred ? `${pred.h}:${pred.a}` : "brak";
+      return `<tr><td>${nick}</td><td class="${pred ? "pred-ok" : "pred-empty"}">${score}</td><td>${pts===null ? "—" : pts+" pkt"}</td></tr>`;
+    }).join("");
+
+    const box=document.createElement("div");
+    box.style.marginTop="10px";
+    any=true;
+    box.innerHTML=`<div class="match-row" style="border-bottom:none;padding-bottom:2px">
+      <span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} · ${m.g || ""}</div>${m.h}</span>
+      <div class="res-col">${off ? `<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}</div>
+      <span class="team r" style="font-size:12px">${m.a}</span>
+    </div>
+    <table class="pred-table"><thead><tr><th>Gracz</th><th>Typ</th><th>Punkty</th></tr></thead><tbody>${rows}</tbody></table>`;
+    currentCard.appendChild(box);
+  });
 }
 
 function renderLeaderboard(){
