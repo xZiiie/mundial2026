@@ -130,7 +130,7 @@
     <div id="tTyp" class="section active">
       <div class="info-box">
         <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
-        <span>Wpisz swoje typy przed meczem. Typy można zmieniać w dowolnym momencie. Po zalogowaniu zostaniesz zapamiętany na tym urządzeniu.</span>
+        <span>Wpisz swoje typy przed meczem. Typowanie meczów blokuje się automatycznie 1 godzinę przed rozpoczęciem meczu. Typ mistrza można zapisać tylko raz. Po zalogowaniu zostaniesz zapamiętany na tym urządzeniu.</span>
       </div>
       <div class="card">
         <span class="label">Typ mistrza świata — 5 pkt</span>
@@ -328,7 +328,7 @@ function matchKickoffMs(m){
   return null;
 }
 function isBetLockedByTime(m){ const kick = matchKickoffMs(m); return kick ? Date.now() >= (kick - 60*60*1000) : false; }
-function isPredictionLocked(m){ return !!officialResults[m.id]; }
+function isPredictionLocked(m){ return !!officialResults[m.id] || isBetLockedByTime(m); }
 function isAdmin(){ return currentUser && keyNick(currentUser.nick)===ADMIN_NICK; }
 function sortedMatches(){
   return allMatches().slice().sort((a,b)=>{
@@ -487,27 +487,46 @@ function renderChampionPicker(){
   const box=document.getElementById("championPickBox");
   if(!box || !currentUser)return;
   const myPick=getChampionForNick(currentUser.nick);
-  const locked=!!officialChampion;
-  if(locked){
+  if(myPick){
     const pts=championScoreForNick(currentUser.nick);
     box.innerHTML=`<div style="font-size:13px;color:var(--color-text-secondary);line-height:1.5">
-      Twój typ: <b>${myPick || "brak"}</b><br>
-      Oficjalny mistrz: <b>${officialChampion}</b><br>
-      Punkty za mistrza: <b>${pts} pkt</b>
+      Twój typ mistrza: <b>${myPick}</b><br>
+      ${officialChampion ? `Oficjalny mistrz: <b>${officialChampion}</b><br>Punkty za mistrza: <b>${pts} pkt</b><br>` : ""}
+      <span class="lock-note">Typ mistrza zapisany — nie można go już zmienić</span>
+    </div>`;
+    return;
+  }
+  if(officialChampion){
+    box.innerHTML=`<div style="font-size:13px;color:var(--color-text-secondary);line-height:1.5">
+      Oficjalny mistrz został już ustawiony: <b>${officialChampion}</b><br>
+      <span class="lock-note">Nie można już typować mistrza</span>
     </div>`;
     return;
   }
   box.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <select class="inp" id="championSelect" style="margin:0;flex:1;min-width:190px">${teamOptionsHtml(myPick)}</select>
+    <select class="inp" id="championSelect" style="margin:0;flex:1;min-width:190px">${teamOptionsHtml("")}</select>
     <button class="btn primary" onclick="saveChampionPick()"><i class="ti ti-device-floppy"></i> Zapisz mistrza</button>
   </div>
-  <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px">Za trafienie mistrza świata dostajesz 5 pkt.</div>`;
+  <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px">Za trafienie mistrza świata dostajesz 5 pkt. Po zapisaniu nie da się zmienić tego typu.</div>`;
 }
 window.saveChampionPick=async function(){
+  if(getChampionForNick(currentUser.nick)){
+    showToast("Typ mistrza jest już zapisany i zablokowany.");
+    rerenderAll();
+    return;
+  }
+  if(officialChampion){
+    showToast("Typowanie mistrza jest już zamknięte.");
+    rerenderAll();
+    return;
+  }
   const sel=document.getElementById("championSelect");
-  if(!sel)return;
+  if(!sel || !sel.value){
+    showToast("Wybierz drużynę.");
+    return;
+  }
   await saveChampionForCurrentUser(sel.value);
-  showToast(sel.value ? "Typ mistrza zapisany!" : "Typ mistrza wyczyszczony.");
+  showToast("Typ mistrza zapisany i zablokowany!");
   rerenderAll();
 }
 
@@ -524,7 +543,7 @@ function renderMatchList(){
     const off=officialResults[m.id];
     const locked=isPredictionLocked(m);
     const row=document.createElement("div");
-    row.className="match-row" + (locked && !off ? " match-locked" : "");
+    row.className="match-row" + (locked ? " match-locked" : "");
     let mid="";
     if(off){
       mid=`<div class="res-col"><div style="font-size:14px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div></div>`;
