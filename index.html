@@ -373,7 +373,15 @@ function watchShared(){
 }
 
 async function saveMain(){
-  await setDoc(doc(db,"app","main"), {officialResults, extraMatches, deletedMatchIds, pointAdjustments}, {merge:true});
+  // UWAGA: nie używamy merge:true, bo Firestore przy merge zostawia stare klucze
+  // w mapie officialResults. Dzięki pełnemu zapisowi usunięty wynik naprawdę znika
+  // z bazy i nie nalicza już punktów po odświeżeniu.
+  await setDoc(doc(db,"app","main"), {
+    officialResults: officialResults || {},
+    extraMatches: extraMatches || [],
+    deletedMatchIds: deletedMatchIds || [],
+    pointAdjustments: pointAdjustments || {}
+  });
 }
 
 async function loadUsersAndPredictions(){
@@ -581,6 +589,10 @@ window.saveOfficialMatch=async function(matchId){
 }
 window.clearOfficialMatch=async function(matchId){
   delete officialResults[matchId];
+  const hi=document.getElementById(`o_${matchId}_h`);
+  const ai=document.getElementById(`o_${matchId}_a`);
+  if(hi) hi.value="";
+  if(ai) ai.value="";
   await saveMain();
   showToast("Wynik wyczyszczony.");
   rerenderAll();
