@@ -130,7 +130,7 @@
     <div id="tTyp" class="section active">
       <div class="info-box">
         <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
-        <span>Wpisz swoje typy przed meczem. Typowanie blokuje się automatycznie 1 godzinę przed rozpoczęciem meczu. Po zalogowaniu zostaniesz zapamiętany na tym urządzeniu.</span>
+        <span>Wpisz swoje typy przed meczem. Typy można zmieniać w dowolnym momencie. Po zalogowaniu zostaniesz zapamiętany na tym urządzeniu.</span>
       </div>
       <div class="card"><div id="matchList"></div></div>
       <button class="btn primary" style="width:100%;justify-content:center" onclick="savePredictions()">
@@ -308,7 +308,7 @@ function matchKickoffMs(m){
   return null;
 }
 function isBetLockedByTime(m){ const kick = matchKickoffMs(m); return kick ? Date.now() >= (kick - 60*60*1000) : false; }
-function isPredictionLocked(m){ return !!officialResults[m.id] || isBetLockedByTime(m); }
+function isPredictionLocked(m){ return !!officialResults[m.id]; }
 function isAdmin(){ return currentUser && keyNick(currentUser.nick)===ADMIN_NICK; }
 function sortedMatches(){
   return allMatches().slice().sort((a,b)=>{
