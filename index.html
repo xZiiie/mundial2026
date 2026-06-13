@@ -132,6 +132,10 @@
         <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
         <span>Wpisz swoje typy przed meczem. Typy można zmieniać w dowolnym momencie. Po zalogowaniu zostaniesz zapamiętany na tym urządzeniu.</span>
       </div>
+      <div class="card">
+        <span class="label">Typ mistrza świata — 5 pkt</span>
+        <div id="championPickBox"></div>
+      </div>
       <div class="card"><div id="matchList"></div></div>
       <button class="btn primary" style="width:100%;justify-content:center" onclick="savePredictions()">
         <i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz typy
@@ -148,6 +152,7 @@
         <div id="leaderboardList"></div>
       </div>
       <div style="margin-top:8px;font-size:11px;color:var(--color-text-tertiary)">
+        <span class="badge b3">5 pkt</span> mistrz świata &nbsp;
         <span class="badge b3">3 pkt</span> dokładny wynik &nbsp;
         <span class="badge b1">1 pkt</span> dobry zwycięzca lub remis
       </div>
@@ -155,6 +160,10 @@
 
     <div id="tAdmin" class="section">
       <div class="info-box"><i class="ti ti-shield" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i> Panel administratora — tylko dla Ciebie.</div>
+      <div class="card">
+        <span class="label">Oficjalny mistrz świata — 5 pkt</span>
+        <div id="adminChampionBox"></div>
+      </div>
       <div class="card">
         <span class="label">Zarządzanie meczami i oficjalne wyniki</span>
         <div id="adminMatchList"></div>
@@ -278,9 +287,11 @@ let currentUser = null;
 let extraMatches = [];
 let deletedMatchIds = [];
 let officialResults = {};
+let officialChampion = "";
 let pointAdjustments = {};
 let usersCache = [];
 let predictionsCache = {};
+let championPredictionsCache = {};
 let unsubMain = null;
 
 function fbReady(){ return firebaseConfig.apiKey && firebaseConfig.apiKey !== "WKLEJ_TUTAJ"; }
@@ -294,6 +305,15 @@ function showToast(msg){ const t=document.getElementById("toastEl"); t.textConte
 function groupBy(arr,key){const m={};arr.forEach(x=>{if(!m[x[key]])m[x[key]]=[];m[x[key]].push(x);});return m;}
 function allMatches(){ const base = MATCHES.filter(m => !deletedMatchIds.includes(m.id)); return [...base, ...extraMatches]; }
 function matchDateTime(m){ return `${m.date || "?"}${m.time ? " " + m.time : ""}`; }
+function allTeamsSorted(){
+  const set = new Set();
+  allMatches().forEach(m=>{ if(m.h) set.add(m.h); if(m.a) set.add(m.a); });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b, "pl"));
+}
+function teamOptionsHtml(selected){
+  const sel = selected || "";
+  return `<option value="">— wybierz drużynę —</option>` + allTeamsSorted().map(t=>`<option value="${t.replace(/"/g,'&quot;')}" ${t===sel ? "selected" : ""}>${t}</option>`).join("");
+}
 function matchKickoffMs(m){
   if(m.kickoffUtc){
     const t = new Date(m.kickoffUtc).getTime();
@@ -353,6 +373,7 @@ async function loadSharedOnce(){
   const snap=await getDoc(doc(db,"app","main"));
   const data=snap.exists()?snap.data():{};
   officialResults=data.officialResults || {};
+  officialChampion=data.officialChampion || "";
   extraMatches=data.extraMatches || [];
   deletedMatchIds=data.deletedMatchIds || [];
   pointAdjustments=data.pointAdjustments || {};
@@ -364,6 +385,7 @@ function watchShared(){
   unsubMain = onSnapshot(doc(db,"app","main"), async (snap)=>{
     const data=snap.exists()?snap.data():{};
     officialResults=data.officialResults || {};
+    officialChampion=data.officialChampion || "";
     extraMatches=data.extraMatches || [];
     deletedMatchIds=data.deletedMatchIds || [];
     pointAdjustments=data.pointAdjustments || {};
@@ -378,6 +400,7 @@ async function saveMain(){
   // z bazy i nie nalicza już punktów po odświeżeniu.
   await setDoc(doc(db,"app","main"), {
     officialResults: officialResults || {},
+    officialChampion: officialChampion || "",
     extraMatches: extraMatches || [],
     deletedMatchIds: deletedMatchIds || [],
     pointAdjustments: pointAdjustments || {}
@@ -390,12 +413,26 @@ async function loadUsersAndPredictions(){
   us.forEach(d=>{ const u=d.data(); if(u && u.nick) usersCache.push(u); });
   const ps=await getDocs(collection(db,"predictions"));
   predictionsCache={};
-  ps.forEach(d=>{ predictionsCache[d.id]=d.data().preds || {}; });
+  championPredictionsCache={};
+  ps.forEach(d=>{
+    const data=d.data() || {};
+    predictionsCache[d.id]=data.preds || {};
+    championPredictionsCache[d.id]=data.champion || "";
+  });
 }
 
 function getPredsForNick(nick){ return predictionsCache[keyNick(nick)] || {}; }
+function getChampionForNick(nick){ return championPredictionsCache[keyNick(nick)] || ""; }
 function loadMyPredictions(){ return getPredsForNick(currentUser.nick); }
 async function saveMyPredictions(preds){ await setDoc(doc(db,"predictions",keyNick(currentUser.nick)), {nick:currentUser.nick, preds, updatedAt:Date.now()}, {merge:true}); predictionsCache[keyNick(currentUser.nick)]=preds; }
+async function saveChampionForCurrentUser(champion){
+  await setDoc(doc(db,"predictions",keyNick(currentUser.nick)), {nick:currentUser.nick, champion: champion || "", updatedAt:Date.now()}, {merge:true});
+  championPredictionsCache[keyNick(currentUser.nick)] = champion || "";
+}
+function championScoreForNick(nick){
+  const pick=getChampionForNick(nick);
+  return officialChampion && pick && pick===officialChampion ? 5 : 0;
+}
 function getManualPoints(nick){ return parseInt(pointAdjustments[keyNick(nick)] || 0) || 0; }
 
 window.showRegView=function(){ document.getElementById("viewLogin").style.display="none"; document.getElementById("viewRegister").style.display="block"; document.getElementById("viewMain").style.display="none"; document.getElementById("regErr").textContent=""; }
@@ -444,7 +481,35 @@ async function enterApp(){
   rerenderAll();
 }
 
-function rerenderAll(){ if(!currentUser)return; renderMatchList(); renderResults(); renderLeaderboard(); if(isAdmin()) renderAdminList(); }
+function rerenderAll(){ if(!currentUser)return; renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); if(isAdmin()) renderAdminList(); }
+
+function renderChampionPicker(){
+  const box=document.getElementById("championPickBox");
+  if(!box || !currentUser)return;
+  const myPick=getChampionForNick(currentUser.nick);
+  const locked=!!officialChampion;
+  if(locked){
+    const pts=championScoreForNick(currentUser.nick);
+    box.innerHTML=`<div style="font-size:13px;color:var(--color-text-secondary);line-height:1.5">
+      Twój typ: <b>${myPick || "brak"}</b><br>
+      Oficjalny mistrz: <b>${officialChampion}</b><br>
+      Punkty za mistrza: <b>${pts} pkt</b>
+    </div>`;
+    return;
+  }
+  box.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <select class="inp" id="championSelect" style="margin:0;flex:1;min-width:190px">${teamOptionsHtml(myPick)}</select>
+    <button class="btn primary" onclick="saveChampionPick()"><i class="ti ti-device-floppy"></i> Zapisz mistrza</button>
+  </div>
+  <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px">Za trafienie mistrza świata dostajesz 5 pkt.</div>`;
+}
+window.saveChampionPick=async function(){
+  const sel=document.getElementById("championSelect");
+  if(!sel)return;
+  await saveChampionForCurrentUser(sel.value);
+  showToast(sel.value ? "Typ mistrza zapisany!" : "Typ mistrza wyczyszczony.");
+  rerenderAll();
+}
 
 function renderMatchList(){
   const list=document.getElementById("matchList");
@@ -509,7 +574,10 @@ function renderResults(){
   let lastDate="";
   const card=document.createElement("div");
   card.className="card";
-  card.innerHTML=`<span class="label">Wyniki i Twoje typy — kolejność według dat</span>`;
+  const myChampion=getChampionForNick(currentUser.nick);
+  const champPts=championScoreForNick(currentUser.nick);
+  card.innerHTML=`<span class="label">Wyniki i Twoje typy — kolejność według dat</span>
+    ${myChampion || officialChampion ? `<div class="info-box" style="margin-top:8px;margin-bottom:8px"><i class="ti ti-crown" style="font-size:16px;flex-shrink:0"></i><span>Twój mistrz: <b>${myChampion || "brak"}</b>${officialChampion ? ` · oficjalny mistrz: <b>${officialChampion}</b> · <b>${champPts} pkt</b>` : " · 5 pkt za trafienie"}</span></div>` : ""}`;
   sortedMatches().forEach(m=>{
     if(!preds[m.id] && !officialResults[m.id])return;
     any=true;
@@ -535,12 +603,35 @@ function renderResults(){
 
 function renderLeaderboard(){
   const list=document.getElementById("leaderboardList"); if(!list)return; const allNicks=usersCache.filter(u=>keyNick(u.nick)!==ADMIN_NICK).map(u=>u.nick); const scores=[];
-  for(const nick of allNicks){ const base=baseScoreForNick(nick); const manual=getManualPoints(nick); scores.push({nick,pts:base.pts+manual,ex:base.ex,win:base.win,manual,base:base.pts}); }
+  for(const nick of allNicks){ const base=baseScoreForNick(nick); const manual=getManualPoints(nick); const champ=championScoreForNick(nick); scores.push({nick,pts:base.pts+manual+champ,ex:base.ex,win:base.win,manual,base:base.pts,champ}); }
   scores.sort((a,b)=>b.pts-a.pts); list.innerHTML=""; if(!scores.length){list.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:13px">Brak graczy w klasyfikacji.</div>`;return;}
-  scores.forEach((s,i)=>{ const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+"."; const idx=Math.abs(parseInt(simpleHash(keyNick(s.nick)),16))%COLORS.length; const row=document.createElement("div"); row.className="ldr-row"; row.innerHTML=`<div style="width:22px;font-size:13px;color:var(--color-text-tertiary)">${medal}</div><div class="avatar" style="width:30px;height:30px;font-size:11px;background:${BGS[idx]};color:${COLORS[idx]}">${s.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${s.nick}</div><div style="text-align:right"><div style="font-size:15px;font-weight:500;color:#185FA5">${s.pts} pkt</div><div style="font-size:10px;color:var(--color-text-tertiary)"><span style="color:#27500A">${s.ex}×3</span> · <span style="color:#0C447C">${s.win}×1</span>${s.manual ? ` · korekta: ${s.manual > 0 ? "+" : ""}${s.manual}` : ""}</div></div>`; list.appendChild(row); });
+  scores.forEach((s,i)=>{ const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+"."; const idx=Math.abs(parseInt(simpleHash(keyNick(s.nick)),16))%COLORS.length; const row=document.createElement("div"); row.className="ldr-row"; row.innerHTML=`<div style="width:22px;font-size:13px;color:var(--color-text-tertiary)">${medal}</div><div class="avatar" style="width:30px;height:30px;font-size:11px;background:${BGS[idx]};color:${COLORS[idx]}">${s.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${s.nick}</div><div style="text-align:right"><div style="font-size:15px;font-weight:500;color:#185FA5">${s.pts} pkt</div><div style="font-size:10px;color:var(--color-text-tertiary)"><span style="color:#27500A">${s.ex}×3</span> · <span style="color:#0C447C">${s.win}×1</span>${s.champ ? ` · mistrz: +${s.champ}` : ""}${s.manual ? ` · korekta: ${s.manual > 0 ? "+" : ""}${s.manual}` : ""}</div></div>`; list.appendChild(row); });
 }
 
-function renderAdminList(){ renderAdminMatches(); renderAdminPlayers(); }
+function renderAdminList(){ renderAdminChampion(); renderAdminMatches(); renderAdminPlayers(); }
+function renderAdminChampion(){
+  const box=document.getElementById("adminChampionBox");
+  if(!box)return;
+  box.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <select class="inp" id="officialChampionSelect" style="margin:0;flex:1;min-width:190px">${teamOptionsHtml(officialChampion)}</select>
+    <button class="btn primary" onclick="saveOfficialChampion()"><i class="ti ti-device-floppy"></i> Zapisz mistrza</button>
+    <button class="btn danger" onclick="clearOfficialChampion()"><i class="ti ti-x"></i> Wyczyść</button>
+  </div>
+  <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:8px">Po ustawieniu oficjalnego mistrza gracze z trafionym typem dostają +5 pkt.</div>`;
+}
+window.saveOfficialChampion=async function(){
+  const sel=document.getElementById("officialChampionSelect");
+  officialChampion=sel ? sel.value : "";
+  await saveMain();
+  showToast(officialChampion ? "Oficjalny mistrz zapisany." : "Oficjalny mistrz wyczyszczony.");
+  rerenderAll();
+}
+window.clearOfficialChampion=async function(){
+  officialChampion="";
+  await saveMain();
+  showToast("Oficjalny mistrz wyczyszczony.");
+  rerenderAll();
+}
 function renderAdminMatches(){
   const list=document.getElementById("adminMatchList");
   if(!list)return;
@@ -559,13 +650,13 @@ function renderAdminMatches(){
 
 function renderAdminPlayers(){
   const pl=document.getElementById("adminPlayerList"); if(!pl)return; pl.innerHTML=""; if(!usersCache.length){pl.innerHTML=`<div style="font-size:12px;color:var(--color-text-tertiary)">Brak graczy</div>`;return;}
-  usersCache.forEach(u=>{ if(!u || !u.nick)return; const idx=Math.abs(parseInt(simpleHash(keyNick(u.nick)),16))%COLORS.length; const base=baseScoreForNick(u.nick).pts; const manual=getManualPoints(u.nick); const total=base+manual; const div=document.createElement("div"); div.className="player-item"; div.innerHTML=`<div class="avatar" style="width:28px;height:28px;font-size:10px;background:${BGS[idx]};color:${COLORS[idx]}">${u.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${u.nick}<div style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">z typów: ${base} pkt</div></div>${keyNick(u.nick)!==ADMIN_NICK?`<div class="admin-points"><input class="inp" style="width:74px;margin:0;text-align:center" type="number" id="adj_${keyNick(u.nick)}" value="${manual}" placeholder="0"><small>= ${total} pkt</small><button class="btn sm" onclick="savePlayerAdjustment('${jsStr(u.nick)}')"><i class="ti ti-device-floppy" aria-hidden="true"></i></button><button class="btn sm danger" onclick="deletePlayer('${jsStr(u.nick)}')"><i class="ti ti-trash" aria-hidden="true"></i></button></div>`:`<span style="font-size:11px;color:var(--color-text-tertiary)">admin</span>`}`; pl.appendChild(div); });
+  usersCache.forEach(u=>{ if(!u || !u.nick)return; const idx=Math.abs(parseInt(simpleHash(keyNick(u.nick)),16))%COLORS.length; const base=baseScoreForNick(u.nick).pts; const champ=championScoreForNick(u.nick); const manual=getManualPoints(u.nick); const total=base+champ+manual; const div=document.createElement("div"); div.className="player-item"; div.innerHTML=`<div class="avatar" style="width:28px;height:28px;font-size:10px;background:${BGS[idx]};color:${COLORS[idx]}">${u.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${u.nick}<div style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">z meczów: ${base} pkt${champ ? ` · mistrz: +${champ}` : ""}</div></div>${keyNick(u.nick)!==ADMIN_NICK?`<div class="admin-points"><input class="inp" style="width:74px;margin:0;text-align:center" type="number" id="adj_${keyNick(u.nick)}" value="${manual}" placeholder="0"><small>= ${total} pkt</small><button class="btn sm" onclick="savePlayerAdjustment('${jsStr(u.nick)}')"><i class="ti ti-device-floppy" aria-hidden="true"></i></button><button class="btn sm danger" onclick="deletePlayer('${jsStr(u.nick)}')"><i class="ti ti-trash" aria-hidden="true"></i></button></div>`:`<span style="font-size:11px;color:var(--color-text-tertiary)">admin</span>`}`; pl.appendChild(div); });
   const saveAll=document.createElement("button"); saveAll.className="btn primary"; saveAll.style.marginTop="10px"; saveAll.innerHTML='<i class="ti ti-device-floppy"></i> Zapisz korekty punktów'; saveAll.onclick=saveAllPlayerPoints; pl.appendChild(saveAll);
 }
 
 window.savePlayerAdjustment=async function(nick){ const input=document.getElementById("adj_"+keyNick(nick)); if(!input)return; const val=parseInt(input.value||"0")||0; pointAdjustments[keyNick(nick)]=val; await saveMain(); showToast("Zapisano punkty: "+nick); rerenderAll(); }
 window.saveAllPlayerPoints=async function(){ usersCache.forEach(u=>{ if(!u||keyNick(u.nick)===ADMIN_NICK)return; const input=document.getElementById("adj_"+keyNick(u.nick)); if(input) pointAdjustments[keyNick(u.nick)]=parseInt(input.value||"0")||0; }); await saveMain(); showToast("Zapisano korekty punktów."); rerenderAll(); }
-window.deletePlayer=async function(nick){ if(!confirm(`Usunąć gracza "${nick}" i jego typy?`))return; await deleteDoc(doc(db,"users",keyNick(nick))); await deleteDoc(doc(db,"predictions",keyNick(nick))); delete pointAdjustments[keyNick(nick)]; await saveMain(); await loadUsersAndPredictions(); showToast("Usunięto: "+nick); rerenderAll(); }
+window.deletePlayer=async function(nick){ if(!confirm(`Usunąć gracza "${nick}" i jego typy?`))return; await deleteDoc(doc(db,"users",keyNick(nick))); await deleteDoc(doc(db,"predictions",keyNick(nick))); delete pointAdjustments[keyNick(nick)]; delete championPredictionsCache[keyNick(nick)]; await saveMain(); await loadUsersAndPredictions(); showToast("Usunięto: "+nick); rerenderAll(); }
 window.deleteMatch=async function(matchId){ if(!confirm("Czy na pewno usunąć ten mecz oraz jego oficjalny wynik?"))return; const extraIndex=extraMatches.findIndex(m=>m.id===matchId); if(extraIndex!==-1) extraMatches.splice(extraIndex,1); else if(!deletedMatchIds.includes(matchId)) deletedMatchIds.push(matchId); delete officialResults[matchId]; await saveMain(); showToast("Mecz został usunięty."); rerenderAll(); }
 window.saveOfficialMatch=async function(matchId){
   const hi=document.getElementById(`o_${matchId}_h`);
