@@ -310,6 +310,24 @@ function matchKickoffMs(m){
 function isBetLockedByTime(m){ const kick = matchKickoffMs(m); return kick ? Date.now() >= (kick - 60*60*1000) : false; }
 function isPredictionLocked(m){ return !!officialResults[m.id] || isBetLockedByTime(m); }
 function isAdmin(){ return currentUser && keyNick(currentUser.nick)===ADMIN_NICK; }
+function sortedMatches(){
+  return allMatches().slice().sort((a,b)=>{
+    const ta = matchKickoffMs(a) || 0;
+    const tb = matchKickoffMs(b) || 0;
+    if(ta !== tb) return ta - tb;
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
+function dateOnlyLabel(m){
+  return m.date || "Bez daty";
+}
+function addDateHeader(list, label){
+  const gt=document.createElement("div");
+  gt.className="g-title";
+  gt.textContent=label;
+  list.appendChild(gt);
+}
+
 
 async function initFirebase(){
   if(!fbReady()){
@@ -421,33 +439,90 @@ async function enterApp(){
 function rerenderAll(){ if(!currentUser)return; renderMatchList(); renderResults(); renderLeaderboard(); if(isAdmin()) renderAdminList(); }
 
 function renderMatchList(){
-  const list=document.getElementById("matchList"); if(!list)return; const preds=loadMyPredictions(); list.innerHTML=""; const byG=groupBy(allMatches(),"g");
-  Object.entries(byG).forEach(([grp,ms])=>{ 
-    const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); 
-    ms.forEach(m=>{ 
-      const p=preds[m.id]||{h:"",a:""}; const off=officialResults[m.id]; const locked=isPredictionLocked(m);
-      const row=document.createElement("div"); row.className="match-row" + (locked && !off ? " match-locked" : ""); 
-      let mid=""; 
-      if(off){ 
-        mid=`<div class="res-col"><div style="font-size:14px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div></div>`; 
-      } else if(locked){
-        mid=`<div class="res-col">${p.h!=="" && p.a!=="" ? `<div style="font-size:13px;font-weight:500">typ: ${p.h}:${p.a}</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak typu</div>`}<div class="lock-note">blokada</div></div>`;
-      } else { 
-        mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"></div>${p.h!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">twój: ${p.h}:${p.a}</div>`:""}</div>`; 
-      } 
-      row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${matchDateTime(m)}</div>${m.h}</span>${mid}<span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); 
-    }); 
+  const list=document.getElementById("matchList");
+  if(!list)return;
+  const preds=loadMyPredictions();
+  list.innerHTML="";
+  let lastDate="";
+  sortedMatches().forEach(m=>{
+    const dateLabel=dateOnlyLabel(m);
+    if(dateLabel!==lastDate){ addDateHeader(list,dateLabel); lastDate=dateLabel; }
+    const p=preds[m.id]||{h:"",a:""};
+    const off=officialResults[m.id];
+    const locked=isPredictionLocked(m);
+    const row=document.createElement("div");
+    row.className="match-row" + (locked && !off ? " match-locked" : "");
+    let mid="";
+    if(off){
+      mid=`<div class="res-col"><div style="font-size:14px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div></div>`;
+    } else if(locked){
+      mid=`<div class="res-col">${p.h!=="" && p.a!=="" ? `<div style="font-size:13px;font-weight:500">typ: ${p.h}:${p.a}</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak typu</div>`}<div class="lock-note">blokada</div></div>`;
+    } else {
+      mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"></div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany typ: ${p.h}:${p.a} · możesz zmienić</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">możesz typować</div>`}</div>`;
+    }
+    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${m.h}</span>${mid}<span class="team r" style="font-size:12px">${m.a}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
+    list.appendChild(row);
   });
 }
 
-window.savePredictions=async function(){ const preds=loadMyPredictions(); allMatches().forEach(m=>{ if(isPredictionLocked(m))return; const hi=document.getElementById(`p_${m.id}_h`); const ai=document.getElementById(`p_${m.id}_a`); if(hi&&ai&&hi.value!==""&&ai.value!==""){ preds[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)}; }}); await saveMyPredictions(preds); showToast("Typy zapisane!"); rerenderAll(); }
+window.savePredictions=async function(){
+  const preds=loadMyPredictions();
+  let changed=0;
+  let skippedPartial=0;
+  allMatches().forEach(m=>{
+    if(isPredictionLocked(m))return;
+    const hi=document.getElementById(`p_${m.id}_h`);
+    const ai=document.getElementById(`p_${m.id}_a`);
+    if(!hi || !ai)return;
+    const hv=hi.value.trim();
+    const av=ai.value.trim();
+    if(hv==="" && av===""){
+      if(preds[m.id]){ delete preds[m.id]; changed++; }
+      return;
+    }
+    if(hv==="" || av===""){ skippedPartial++; return; }
+    preds[m.id]={h:parseInt(hv),a:parseInt(av)};
+    changed++;
+  });
+  await saveMyPredictions(preds);
+  showToast(skippedPartial ? "Zapisano pełne typy. Puste połówki pominięto." : "Typy zapisane / zmienione!");
+  rerenderAll();
+}
 
 function calcPts(pred,off){ if(!pred||!off||off.h===undefined || pred.h==="" || pred.a==="")return null; if(pred.h===off.h&&pred.a===off.a)return 3; const pr=pred.h>pred.a?1:pred.h<pred.a?-1:0; const or=off.h>off.a?1:off.h<off.a?-1:0; return pr===or?1:0; }
 function baseScoreForNick(nick){ const preds=getPredsForNick(nick); let pts=0,ex=0,win=0; allMatches().forEach(m=>{ const off=officialResults[m.id]; const pred=preds[m.id]; if(!off||!pred)return; const r=calcPts(pred,off); if(r===null)return; pts+=r; if(r===3)ex++; else if(r===1)win++; }); return {pts,ex,win}; }
 
 function renderResults(){
-  const list=document.getElementById("resultsList"); if(!list)return; const preds=loadMyPredictions(); list.innerHTML=""; const byG=groupBy(allMatches(),"g"); let any=false;
-  Object.entries(byG).forEach(([grp,ms])=>{ const relevant=ms.filter(m=>preds[m.id]||officialResults[m.id]); if(!relevant.length)return; any=true; const card=document.createElement("div"); card.className="card"; card.innerHTML=`<span class="label">${grp}</span>`; relevant.forEach(m=>{ const pred=preds[m.id]; const off=officialResults[m.id]; const pts=calcPts(pred,off); let badge=""; if(pts===3)badge=`<span class="badge b3">+3 pkt</span>`; else if(pts===1)badge=`<span class="badge b1">+1 pkt</span>`; else if(pts===0&&off)badge=`<span style="font-size:11px;color:var(--color-text-tertiary)">0 pkt</span>`; const row=document.createElement("div"); row.className="match-row"; row.innerHTML=`<span class="team" style="font-size:12px">${m.h}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${m.a}</span>`; card.appendChild(row); }); list.appendChild(card); }); if(!any)list.innerHTML=`<div class="card" style="color:var(--color-text-tertiary);font-size:13px;padding:15px">Brak typów do pokazania. Wpisz swoje typy!</div>`;
+  const list=document.getElementById("resultsList");
+  if(!list)return;
+  const preds=loadMyPredictions();
+  list.innerHTML="";
+  let any=false;
+  let lastDate="";
+  const card=document.createElement("div");
+  card.className="card";
+  card.innerHTML=`<span class="label">Wyniki i Twoje typy — kolejność według dat</span>`;
+  sortedMatches().forEach(m=>{
+    if(!preds[m.id] && !officialResults[m.id])return;
+    any=true;
+    const dateLabel=dateOnlyLabel(m);
+    if(dateLabel!==lastDate){
+      const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=dateLabel; card.appendChild(gt); lastDate=dateLabel;
+    }
+    const pred=preds[m.id];
+    const off=officialResults[m.id];
+    const pts=calcPts(pred,off);
+    let badge="";
+    if(pts===3)badge=`<span class="badge b3">+3 pkt</span>`;
+    else if(pts===1)badge=`<span class="badge b1">+1 pkt</span>`;
+    else if(pts===0&&off)badge=`<span style="font-size:11px;color:var(--color-text-tertiary)">0 pkt</span>`;
+    const row=document.createElement("div");
+    row.className="match-row";
+    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${m.h}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${m.a}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
+    card.appendChild(row);
+  });
+  if(any) list.appendChild(card);
+  else list.innerHTML=`<div class="card" style="color:var(--color-text-tertiary);font-size:13px;padding:15px">Brak typów do pokazania. Wpisz swoje typy!</div>`;
 }
 
 function renderLeaderboard(){
@@ -459,8 +534,19 @@ function renderLeaderboard(){
 
 function renderAdminList(){ renderAdminMatches(); renderAdminPlayers(); }
 function renderAdminMatches(){
-  const list=document.getElementById("adminMatchList"); if(!list)return; list.innerHTML=""; const byG=groupBy(allMatches(),"g");
-  Object.entries(byG).forEach(([grp,ms])=>{ const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); ms.forEach(m=>{ const off=officialResults[m.id]||{h:"",a:""}; const row=document.createElement("div"); row.className="match-row"; row.innerHTML=`<button class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i></button><span class="team" style="font-size:12px"><div class="match-date">${matchDateTime(m)}</div>${m.h}</span><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–"></div><span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); }); });
+  const list=document.getElementById("adminMatchList");
+  if(!list)return;
+  list.innerHTML="";
+  let lastDate="";
+  sortedMatches().forEach(m=>{
+    const dateLabel=dateOnlyLabel(m);
+    if(dateLabel!==lastDate){ addDateHeader(list,dateLabel); lastDate=dateLabel; }
+    const off=officialResults[m.id]||{h:"",a:""};
+    const row=document.createElement("div");
+    row.className="match-row";
+    row.innerHTML=`<button class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i></button><span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${m.h}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–"><button class="btn sm" onclick="saveOfficialMatch('${jsStr(m.id)}')" title="Zapisz ten wynik"><i class="ti ti-device-floppy"></i></button><button class="btn sm danger" onclick="clearOfficialMatch('${jsStr(m.id)}')" title="Wyczyść wynik"><i class="ti ti-x"></i></button></div><span class="team r" style="font-size:12px">${m.a}</span>`;
+    list.appendChild(row);
+  });
 }
 
 function renderAdminPlayers(){
@@ -473,7 +559,44 @@ window.savePlayerAdjustment=async function(nick){ const input=document.getElemen
 window.saveAllPlayerPoints=async function(){ usersCache.forEach(u=>{ if(!u||keyNick(u.nick)===ADMIN_NICK)return; const input=document.getElementById("adj_"+keyNick(u.nick)); if(input) pointAdjustments[keyNick(u.nick)]=parseInt(input.value||"0")||0; }); await saveMain(); showToast("Zapisano korekty punktów."); rerenderAll(); }
 window.deletePlayer=async function(nick){ if(!confirm(`Usunąć gracza "${nick}" i jego typy?`))return; await deleteDoc(doc(db,"users",keyNick(nick))); await deleteDoc(doc(db,"predictions",keyNick(nick))); delete pointAdjustments[keyNick(nick)]; await saveMain(); await loadUsersAndPredictions(); showToast("Usunięto: "+nick); rerenderAll(); }
 window.deleteMatch=async function(matchId){ if(!confirm("Czy na pewno usunąć ten mecz oraz jego oficjalny wynik?"))return; const extraIndex=extraMatches.findIndex(m=>m.id===matchId); if(extraIndex!==-1) extraMatches.splice(extraIndex,1); else if(!deletedMatchIds.includes(matchId)) deletedMatchIds.push(matchId); delete officialResults[matchId]; await saveMain(); showToast("Mecz został usunięty."); rerenderAll(); }
-window.saveOfficial=async function(){ allMatches().forEach(m=>{ const hi=document.getElementById(`o_${m.id}_h`); const ai=document.getElementById(`o_${m.id}_a`); if(hi&&ai&&hi.value!==""&&ai.value!=="") officialResults[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)}; }); await saveMain(); showToast("Wyniki zapisane!"); rerenderAll(); }
+window.saveOfficialMatch=async function(matchId){
+  const hi=document.getElementById(`o_${matchId}_h`);
+  const ai=document.getElementById(`o_${matchId}_a`);
+  if(!hi || !ai) return;
+  if(hi.value=="" && ai.value==""){
+    delete officialResults[matchId];
+    await saveMain();
+    showToast("Wynik wyczyszczony.");
+    rerenderAll();
+    return;
+  }
+  if(hi.value=="" || ai.value==""){
+    showToast("Wpisz oba wyniki albo wyczyść oba pola.");
+    return;
+  }
+  officialResults[matchId]={h:parseInt(hi.value),a:parseInt(ai.value)};
+  await saveMain();
+  showToast("Wynik zmieniony.");
+  rerenderAll();
+}
+window.clearOfficialMatch=async function(matchId){
+  delete officialResults[matchId];
+  await saveMain();
+  showToast("Wynik wyczyszczony.");
+  rerenderAll();
+}
+window.saveOfficial=async function(){
+  allMatches().forEach(m=>{
+    const hi=document.getElementById(`o_${m.id}_h`);
+    const ai=document.getElementById(`o_${m.id}_a`);
+    if(!hi||!ai)return;
+    if(hi.value=="" && ai.value=="") delete officialResults[m.id];
+    else if(hi.value!=="" && ai.value!=="") officialResults[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)};
+  });
+  await saveMain();
+  showToast("Wyniki zapisane / zaktualizowane!");
+  rerenderAll();
+}
 window.fetchLive=async function(){ showToast("Ta funkcja wymaga osobnego backendu. Wpisz wyniki ręcznie."); }
 window.addMatchPrompt=async function(){ const h=prompt("Gospodarz:"); if(!h)return; const a=prompt("Gość:"); if(!a)return; const g=prompt("Grupa:","Inne")||"Inne"; const date=prompt("Data w czasie polskim (np. 20.06):","?"); const time=prompt("Godzina w czasie polskim (np. 18:00):","18:00"); let kickoffUtc=""; const [d,mo]=String(date||"").split(".").map(Number); const [hh,mm]=String(time||"").split(":").map(Number); if(d && mo && Number.isFinite(hh)){ kickoffUtc = new Date(2026, mo-1, d, hh||0, mm||0, 0).toISOString(); } const id="x"+Date.now(); extraMatches.push({id,g,h,a,date:date||"?",time:time||"",kickoffUtc}); await saveMain(); showToast("Mecz dodany!"); rerenderAll(); }
 
