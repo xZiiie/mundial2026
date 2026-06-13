@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Typer Mundialu 2026</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #f8f9fa;
+      --color-border-primary: #dee2e6;
+      --color-border-secondary: #ced4da;
+      --color-border-tertiary: #e9ecef;
+      --color-text-primary: #212529;
+      --color-text-secondary: #495057;
+      --color-text-tertiary: #6c757d;
+      --border-radius-md: 6px;
+      --border-radius-lg: 8px;
+    }
+    body{font-family:var(--font-sans); background: #f1f3f5; color: var(--color-text-primary); padding: 20px;}
+    .app{padding:1rem 0;max-width:680px; margin: 0 auto;}
+    .card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
+    .tabs{display:flex;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap}
+    .tab{padding:7px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:13px;cursor:pointer;color:var(--color-text-secondary);transition:all .15s}
+    .tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);font-weight:500}
+    .tab:hover:not(.active){background:var(--color-background-secondary)}
+    .section{display:none}.section.active{display:block}
+    .btn{padding:9px 16px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;font-size:13px;font-weight:500;cursor:pointer;color:var(--color-text-primary);transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+    .btn:hover{background:var(--color-background-secondary)}
+    .btn.primary{background:#185FA5;color:#fff;border-color:#185FA5}
+    .btn.primary:hover{background:#0C447C}
+    .btn.danger{background:#A32D2D;color:#fff;border-color:#A32D2D}
+    .btn.sm{padding:6px 10px;font-size:12px}
+    .btn:disabled{opacity:.4;cursor:not-allowed}
+    .inp{padding:9px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:14px;width:100%;margin-bottom:10px}
+    .inp:focus{outline:none;border-color:#185FA5}
+    .label{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block}
+    .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+    .hdr-title{font-size:20px;font-weight:500}
+    .avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:14px;flex-shrink:0}
+    .match-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+    .match-row:last-child{border-bottom:none}
+    .team{flex:1;font-size:13px;font-weight:500}
+    .team.r{text-align:right}
+    .sc{width:38px;height:34px;text-align:center;font-size:15px;font-weight:500;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary)}
+    .sc:focus{outline:none;border-color:#185FA5}
+    .sep{color:var(--color-text-tertiary);font-size:13px}
+    .g-title{font-size:10px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 2px;padding-bottom:4px;border-bottom:0.5px solid var(--color-border-tertiary)}
+    .res-col{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px}
+    .badge{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:500;white-space:nowrap}
+    .b3{background:#EAF3DE;color:#27500A}.b1{background:#E6F1FB;color:#0C447C}
+    .ldr-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+    .ldr-row:last-child{border-bottom:none}
+    .toast{position:fixed;top:14px;right:14px;background:#185FA5;color:#fff;padding:9px 14px;border-radius:var(--border-radius-md);font-size:12px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+    .toast.show{opacity:1}
+    .err{color:#A32D2D;font-size:12px;margin-top:4px;min-height:18px}
+    .info-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:12px;color:var(--color-text-secondary);margin-bottom:12px;display:flex;align-items:flex-start;gap:8px}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--color-border-secondary);border-top-color:#185FA5;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .player-list{display:flex;flex-direction:column;gap:6px}
+    .player-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);flex-wrap:wrap}
+    .admin-points{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .admin-points small{font-size:10px;color:var(--color-text-tertiary)}
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    input[type=number]{-moz-appearance:textfield}
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <div id="viewLogin">
+    <div class="hdr"><div class="hdr-title">⚽ Typer Mundialu 2026</div></div>
+    <div class="card" style="max-width:340px;margin:0 auto">
+      <span class="label">Logowanie</span>
+      <input class="inp" type="text" id="loginName" placeholder="Twoje imię / nick" autocomplete="username">
+      <input class="inp" type="password" id="loginPass" placeholder="Hasło" autocomplete="current-password">
+      <div class="err" id="loginErr"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()" id="loginBtn">
+        <i class="ti ti-login" aria-hidden="true"></i> Zaloguj się
+      </button>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--color-text-tertiary)">
+        Nie masz konta? <button class="btn sm" onclick="showRegView()" style="border:none;padding:0;font-size:12px;color:#185FA5;background:none;cursor:pointer;font-weight:500">Zarejestruj się</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewRegister" style="display:none">
+    <div class="hdr"><div class="hdr-title">⚽ Typer Mundialu 2026</div></div>
+    <div class="card" style="max-width:340px;margin:0 auto">
+      <span class="label">Nowe konto</span>
+      <input class="inp" type="text" id="regName" placeholder="Imię / nick (widoczne w tabeli)" autocomplete="username">
+      <input class="inp" type="password" id="regPass" placeholder="Hasło" autocomplete="new-password">
+      <input class="inp" type="password" id="regPass2" placeholder="Powtórz hasło" autocomplete="new-password">
+      <div class="err" id="regErr"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doRegister()" id="regBtn">
+        <i class="ti ti-user-plus" aria-hidden="true"></i> Utwórz konto
+      </button>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--color-text-tertiary)">
+        Masz już konto? <button class="btn sm" onclick="showLoginView()" style="border:none;padding:0;font-size:12px;color:#185FA5;background:none;cursor:pointer;font-weight:500">Zaloguj się</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewMain" style="display:none">
+    <div class="hdr">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar" id="mainAvatar"></div>
+        <div>
+          <div class="hdr-title" id="mainName" style="font-size:16px"></div>
+          <div style="font-size:11px;color:var(--color-text-tertiary)" id="mainRole"></div>
+        </div>
+      </div>
+      <button class="btn sm" onclick="doLogout()"><i class="ti ti-logout" aria-hidden="true"></i> Wyjdź</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab_tTyp" onclick="switchTab('tTyp')"><i class="ti ti-pencil" aria-hidden="true"></i> Typy</button>
+      <button class="tab" id="tab_tWyniki" onclick="switchTab('tWyniki')"><i class="ti ti-trophy" aria-hidden="true"></i> Wyniki</button>
+      <button class="tab" id="tab_tTabela" onclick="switchTab('tTabela')"><i class="ti ti-list-numbers" aria-hidden="true"></i> Tabela</button>
+      <button class="tab" id="adminTab" style="display:none" onclick="switchTab('tAdmin')"><i class="ti ti-settings" aria-hidden="true"></i> Admin</button>
+    </div>
+
+    <div id="tTyp" class="section active">
+      <div class="info-box">
+        <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
+        <span>Wpisz swoje typy przed meczem. Mecze z oficjalnym wynikiem są zablokowane.</span>
+      </div>
+      <div class="card"><div id="matchList"></div></div>
+      <button class="btn primary" style="width:100%;justify-content:center" onclick="savePredictions()">
+        <i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz typy
+      </button>
+    </div>
+
+    <div id="tWyniki" class="section">
+      <div id="resultsList"></div>
+    </div>
+
+    <div id="tTabela" class="section">
+      <div class="card">
+        <span class="label">Klasyfikacja graczy</span>
+        <div id="leaderboardList"></div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--color-text-tertiary)">
+        <span class="badge b3">3 pkt</span> dokładny wynik &nbsp;
+        <span class="badge b1">1 pkt</span> dobry zwycięzca lub remis
+      </div>
+    </div>
+
+    <div id="tAdmin" class="section">
+      <div class="info-box"><i class="ti ti-shield" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i> Panel administratora — tylko dla Ciebie.</div>
+      <div class="card">
+        <span class="label">Zarządzanie meczami i oficjalne wyniki</span>
+        <div id="adminMatchList"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn primary" onclick="saveOfficial()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz wyniki</button>
+        <button class="btn" onclick="fetchLive()"><i class="ti ti-refresh" aria-hidden="true"></i> Pobierz z internetu</button>
+        <button class="btn" onclick="addMatchPrompt()"><i class="ti ti-plus" aria-hidden="true"></i> Dodaj mecz</button>
+      </div>
+      <div style="margin-top:20px" class="card">
+        <span class="label">Gracze — ręczna korekta punktów</span>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px">Wpisz dodatnią lub ujemną liczbę, np. 5 albo -2. Korekta dolicza się do punktów z typów.</div>
+        <div id="adminPlayerList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastEl" class="toast"></div>
+</div>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+// ============================================================
+// 1) TU WKLEJ SWOJĄ KONFIGURACJĘ Z FIREBASE
+// Firebase Console → Project settings → General → Your apps → Web app
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAP9xWydOC_PUOFWgbLScE6tv5DP1FKo0Q",
+  authDomain: "mundial2026-a9233.firebaseapp.com",
+  projectId: "mundial2026-a9233",
+  storageBucket: "mundial2026-a9233.firebasestorage.app",
+  messagingSenderId: "949958381106",
+  appId: "1:949958381106:web:d7e91c35293e937506f62b",
+  measurementId: "G-KN0L6J5VPB"
+};
+
+const ADMIN_NICK = "kapiadmin";
+const COLORS = ["#185FA5","#0F6E56","#993C1D","#993556","#3B6D11","#854F0B","#534AB7","#A32D2D"];
+const BGS   = ["#E6F1FB","#E1F5EE","#FAECE7","#FBEAF0","#EAF3DE","#FAEEDA","#EEEDFE","#FCEBEB"];
+
+const MATCHES = [
+  {id:"a1",g:"Grupa A",h:"Meksyk",a:"RPA",date:"11.06"},
+  {id:"a2",g:"Grupa A",h:"Korea Płd.",a:"Czechy",date:"12.06"},
+  {id:"a3",g:"Grupa A",h:"Czechy",a:"RPA",date:"18.06"},
+  {id:"a4",g:"Grupa A",h:"Meksyk",a:"Korea Płd.",date:"19.06"},
+  {id:"a5",g:"Grupa A",h:"Czechy",a:"Meksyk",date:"25.06"},
+  {id:"a6",g:"Grupa A",h:"RPA",a:"Korea Płd.",date:"25.06"},
+  {id:"b1",g:"Grupa B",h:"Kanada",a:"Bośnia i Herc.",date:"12.06"},
+  {id:"b2",g:"Grupa B",h:"Szwajcaria",a:"Katar",date:"13.06"},
+  {id:"b3",g:"Grupa B",h:"Katar",a:"Kanada",date:"17.06"},
+  {id:"b4",g:"Grupa B",h:"Bośnia i Herc.",a:"Szwajcaria",date:"18.06"},
+  {id:"b5",g:"Grupa B",h:"Katar",a:"Bośnia i Herc.",date:"22.06"},
+  {id:"b6",g:"Grupa B",h:"Szwajcaria",a:"Kanada",date:"22.06"},
+  {id:"c1",g:"Grupa C",h:"Brazylia",a:"Szkocja",date:"13.06"},
+  {id:"c2",g:"Grupa C",h:"Maroko",a:"Haiti",date:"13.06"},
+  {id:"c3",g:"Grupa C",h:"Haiti",a:"Brazylia",date:"17.06"},
+  {id:"c4",g:"Grupa C",h:"Szkocja",a:"Maroko",date:"18.06"},
+  {id:"c5",g:"Grupa C",h:"Haiti",a:"Szkocja",date:"22.06"},
+  {id:"c6",g:"Grupa C",h:"Brazylia",a:"Maroko",date:"22.06"},
+  {id:"d1",g:"Grupa D",h:"USA",a:"Paragwaj",date:"12.06"},
+  {id:"d2",g:"Grupa D",h:"Turcja",a:"Australia",date:"13.06"},
+  {id:"d3",g:"Grupa D",h:"Australia",a:"USA",date:"17.06"},
+  {id:"d4",g:"Grupa D",h:"Paragwaj",a:"Turcja",date:"18.06"},
+  {id:"d5",g:"Grupa D",h:"Australia",a:"Paragwaj",date:"22.06"},
+  {id:"d6",g:"Grupa D",h:"USA",a:"Turcja",date:"22.06"},
+  {id:"e1",g:"Grupa E",h:"Niemcy",a:"Curaçao",date:"14.06"},
+  {id:"e2",g:"Grupa E",h:"Arabia Saudyjska",a:"Ekwador",date:"14.06"},
+  {id:"f1",g:"Grupa F",h:"Holandia",a:"Tunezja",date:"14.06"},
+  {id:"f2",g:"Grupa F",h:"Japonia",a:"Szwecja",date:"15.06"},
+  {id:"g1",g:"Grupa G",h:"Belgia",a:"Nowa Zelandia",date:"15.06"},
+  {id:"g2",g:"Grupa G",h:"Iran",a:"Egipt",date:"15.06"},
+  {id:"h1",g:"Grupa H",h:"Hiszpania",a:"Arabia Saudyjska",date:"15.06"},
+  {id:"h2",g:"Grupa H",h:"Urugwaj",a:"Ziel. Przylądek",date:"16.06"},
+  {id:"i1",g:"Grupa I",h:"Francja",a:"Irak",date:"16.06"},
+  {id:"i2",g:"Grupa I",h:"Senegal",a:"Norwegia",date:"16.06"},
+  {id:"j1",g:"Grupa J",h:"Argentyna",a:"Algieria",date:"17.06"},
+  {id:"j2",g:"Grupa J",h:"Austria",a:"Jordania",date:"17.06"},
+  {id:"k1",g:"Grupa K",h:"Portugalia",a:"Uzbekistan",date:"18.06"},
+  {id:"k2",g:"Grupa K",h:"Kolumbia",a:"DR Kongo",date:"18.06"},
+  {id:"l1",g:"Grupa L",h:"Anglia",a:"Panama",date:"18.06"},
+  {id:"l2",g:"Grupa L",h:"Chorwacja",a:"Ghana",date:"19.06"},
+];
+
+let db = null;
+let currentUser = null;
+let extraMatches = [];
+let deletedMatchIds = [];
+let officialResults = {};
+let pointAdjustments = {};
+let usersCache = [];
+let predictionsCache = {};
+let unsubMain = null;
+
+function fbReady(){ return firebaseConfig.apiKey && firebaseConfig.apiKey !== "WKLEJ_TUTAJ"; }
+function keyNick(nick){ return String(nick || "").trim().toLowerCase(); }
+function jsStr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' '); }
+function stSessionSet(key,val){ sessionStorage.setItem(key, JSON.stringify(val)); }
+function stSessionGet(key){ const v=sessionStorage.getItem(key); return v ? JSON.parse(v) : null; }
+
+function simpleHash(str){ let h=0; for(let i=0;i<str.length;i++){h=(h*31+str.charCodeAt(i))>>>0;} return h.toString(16); }
+function showToast(msg){ const t=document.getElementById("toastEl"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2400); }
+function groupBy(arr,key){const m={};arr.forEach(x=>{if(!m[x[key]])m[x[key]]=[];m[x[key]].push(x);});return m;}
+function allMatches(){ const base = MATCHES.filter(m => !deletedMatchIds.includes(m.id)); return [...base, ...extraMatches]; }
+function isAdmin(){ return currentUser && keyNick(currentUser.nick)===ADMIN_NICK; }
+
+async function initFirebase(){
+  if(!fbReady()){
+    document.getElementById("loginErr").innerHTML = "Najpierw wklej konfigurację Firebase w pliku <b>index.html</b>.";
+    return;
+  }
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  await ensureAdmin();
+  const saved = stSessionGet("currentUser");
+  if(saved){ currentUser=saved; enterApp(); }
+}
+
+async function ensureAdmin(){
+  const ref=doc(db,"users",ADMIN_NICK);
+  const snap=await getDoc(ref);
+  if(!snap.exists()){
+    await setDoc(ref,{nick:ADMIN_NICK, passHash:simpleHash("admin"+ADMIN_NICK), createdAt:Date.now(), role:"admin"});
+  }
+}
+
+async function loadSharedOnce(){
+  const snap=await getDoc(doc(db,"app","main"));
+  const data=snap.exists()?snap.data():{};
+  officialResults=data.officialResults || {};
+  extraMatches=data.extraMatches || [];
+  deletedMatchIds=data.deletedMatchIds || [];
+  pointAdjustments=data.pointAdjustments || {};
+  await loadUsersAndPredictions();
+}
+
+function watchShared(){
+  if(unsubMain) unsubMain();
+  unsubMain = onSnapshot(doc(db,"app","main"), async (snap)=>{
+    const data=snap.exists()?snap.data():{};
+    officialResults=data.officialResults || {};
+    extraMatches=data.extraMatches || [];
+    deletedMatchIds=data.deletedMatchIds || [];
+    pointAdjustments=data.pointAdjustments || {};
+    await loadUsersAndPredictions();
+    rerenderAll();
+  });
+}
+
+async function saveMain(){
+  await setDoc(doc(db,"app","main"), {officialResults, extraMatches, deletedMatchIds, pointAdjustments}, {merge:true});
+}
+
+async function loadUsersAndPredictions(){
+  const us=await getDocs(collection(db,"users"));
+  usersCache=[];
+  us.forEach(d=>{ const u=d.data(); if(u && u.nick) usersCache.push(u); });
+  const ps=await getDocs(collection(db,"predictions"));
+  predictionsCache={};
+  ps.forEach(d=>{ predictionsCache[d.id]=d.data().preds || {}; });
+}
+
+function getPredsForNick(nick){ return predictionsCache[keyNick(nick)] || {}; }
+function loadMyPredictions(){ return getPredsForNick(currentUser.nick); }
+async function saveMyPredictions(preds){ await setDoc(doc(db,"predictions",keyNick(currentUser.nick)), {nick:currentUser.nick, preds, updatedAt:Date.now()}, {merge:true}); predictionsCache[keyNick(currentUser.nick)]=preds; }
+function getManualPoints(nick){ return parseInt(pointAdjustments[keyNick(nick)] || 0) || 0; }
+
+window.showRegView=function(){ document.getElementById("viewLogin").style.display="none"; document.getElementById("viewRegister").style.display="block"; document.getElementById("viewMain").style.display="none"; document.getElementById("regErr").textContent=""; }
+window.showLoginView=function(){ document.getElementById("viewLogin").style.display="block"; document.getElementById("viewRegister").style.display="none"; document.getElementById("viewMain").style.display="none"; document.getElementById("loginErr").textContent=""; document.getElementById("loginPass").value=""; }
+window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin') renderAdminList(); }
+window.doLogout=function(){ currentUser=null; sessionStorage.removeItem("currentUser"); if(unsubMain) unsubMain(); showLoginView(); switchTab("tTyp"); }
+
+window.doRegister=async function(){
+  if(!db){ document.getElementById("regErr").textContent="Brak konfiguracji Firebase."; return; }
+  const name=document.getElementById("regName").value.trim();
+  const pass=document.getElementById("regPass").value;
+  const pass2=document.getElementById("regPass2").value;
+  const err=document.getElementById("regErr"); err.textContent="";
+  if(!name){err.textContent="Podaj nick.";return;} if(name.length<2){err.textContent="Nick za krótki.";return;} if(keyNick(name)===ADMIN_NICK){err.textContent="Ten nick jest zarezerwowany.";return;} if(!pass||pass.length<3){err.textContent="Hasło min. 3 znaki.";return;} if(pass!==pass2){err.textContent="Hasła się nie zgadzają.";return;}
+  const btn=document.getElementById("regBtn"); btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Tworzę konto...';
+  try{
+    const ref=doc(db,"users",keyNick(name)); const existing=await getDoc(ref);
+    if(existing.exists()){err.textContent="Ten nick jest już zajęty.";return;}
+    await setDoc(ref,{nick:name,passHash:simpleHash(pass+keyNick(name)),createdAt:Date.now(),role:"player"});
+    showToast("Konto utworzone! Zaloguj się."); showLoginView(); document.getElementById("loginName").value=name;
+  }catch(e){ err.textContent="Błąd Firebase: "+e.message; }
+  finally{ btn.disabled=false; btn.innerHTML='<i class="ti ti-user-plus"></i> Utwórz konto'; }
+}
+
+window.doLogin=async function(){
+  if(!db){ document.getElementById("loginErr").textContent="Brak konfiguracji Firebase."; return; }
+  const name=document.getElementById("loginName").value.trim(); const pass=document.getElementById("loginPass").value; const err=document.getElementById("loginErr"); err.textContent="";
+  if(!name||!pass){err.textContent="Podaj nick i hasło.";return;}
+  const btn=document.getElementById("loginBtn"); btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Loguję...';
+  try{
+    const snap=await getDoc(doc(db,"users",keyNick(name))); const userData=snap.exists()?snap.data():null;
+    if(!userData || userData.passHash !== simpleHash(pass+keyNick(name))){ err.textContent="Błędny nick lub hasło."; return; }
+    currentUser=userData; stSessionSet("currentUser",currentUser); await enterApp();
+  }catch(e){ err.textContent="Błąd Firebase: "+e.message; }
+  finally{ btn.disabled=false; btn.innerHTML='<i class="ti ti-login"></i> Zaloguj się'; }
+}
+
+async function enterApp(){
+  await loadSharedOnce(); watchShared();
+  document.getElementById("viewLogin").style.display="none"; document.getElementById("viewRegister").style.display="none"; document.getElementById("viewMain").style.display="block";
+  const idx=Math.abs(parseInt(simpleHash(keyNick(currentUser.nick)),16))%COLORS.length;
+  const av=document.getElementById("mainAvatar"); av.style.background=BGS[idx]; av.style.color=COLORS[idx]; av.textContent=currentUser.nick.slice(0,2).toUpperCase();
+  document.getElementById("mainName").textContent=currentUser.nick;
+  document.getElementById("mainRole").textContent=isAdmin()?"Administrator":"Gracz";
+  document.getElementById("adminTab").style.display=isAdmin()?"":"none";
+  rerenderAll();
+}
+
+function rerenderAll(){ if(!currentUser)return; renderMatchList(); renderResults(); renderLeaderboard(); if(isAdmin()) renderAdminList(); }
+
+function renderMatchList(){
+  const list=document.getElementById("matchList"); if(!list)return; const preds=loadMyPredictions(); list.innerHTML=""; const byG=groupBy(allMatches(),"g");
+  Object.entries(byG).forEach(([grp,ms])=>{ const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); ms.forEach(m=>{ const p=preds[m.id]||{h:"",a:""}; const off=officialResults[m.id]; const row=document.createElement("div"); row.className="match-row"; let mid=""; if(off){ mid=`<div class="res-col"><div style="font-size:14px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div></div>`; } else { mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"></div>${p.h!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">twój: ${p.h}:${p.a}</div>`:""}</div>`; } row.innerHTML=`<span class="team" style="font-size:12px">${m.date} ${m.h}</span>${mid}<span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); }); });
+}
+
+window.savePredictions=async function(){ const preds=loadMyPredictions(); allMatches().forEach(m=>{ if(officialResults[m.id])return; const hi=document.getElementById(`p_${m.id}_h`); const ai=document.getElementById(`p_${m.id}_a`); if(hi&&ai&&hi.value!==""&&ai.value!==""){ preds[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)}; }}); await saveMyPredictions(preds); showToast("Typy zapisane!"); rerenderAll(); }
+
+function calcPts(pred,off){ if(!pred||!off||off.h===undefined || pred.h==="" || pred.a==="")return null; if(pred.h===off.h&&pred.a===off.a)return 3; const pr=pred.h>pred.a?1:pred.h<pred.a?-1:0; const or=off.h>off.a?1:off.h<off.a?-1:0; return pr===or?1:0; }
+function baseScoreForNick(nick){ const preds=getPredsForNick(nick); let pts=0,ex=0,win=0; allMatches().forEach(m=>{ const off=officialResults[m.id]; const pred=preds[m.id]; if(!off||!pred)return; const r=calcPts(pred,off); if(r===null)return; pts+=r; if(r===3)ex++; else if(r===1)win++; }); return {pts,ex,win}; }
+
+function renderResults(){
+  const list=document.getElementById("resultsList"); if(!list)return; const preds=loadMyPredictions(); list.innerHTML=""; const byG=groupBy(allMatches(),"g"); let any=false;
+  Object.entries(byG).forEach(([grp,ms])=>{ const relevant=ms.filter(m=>preds[m.id]||officialResults[m.id]); if(!relevant.length)return; any=true; const card=document.createElement("div"); card.className="card"; card.innerHTML=`<span class="label">${grp}</span>`; relevant.forEach(m=>{ const pred=preds[m.id]; const off=officialResults[m.id]; const pts=calcPts(pred,off); let badge=""; if(pts===3)badge=`<span class="badge b3">+3 pkt</span>`; else if(pts===1)badge=`<span class="badge b1">+1 pkt</span>`; else if(pts===0&&off)badge=`<span style="font-size:11px;color:var(--color-text-tertiary)">0 pkt</span>`; const row=document.createElement("div"); row.className="match-row"; row.innerHTML=`<span class="team" style="font-size:12px">${m.h}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${m.a}</span>`; card.appendChild(row); }); list.appendChild(card); }); if(!any)list.innerHTML=`<div class="card" style="color:var(--color-text-tertiary);font-size:13px;padding:15px">Brak typów do pokazania. Wpisz swoje typy!</div>`;
+}
+
+function renderLeaderboard(){
+  const list=document.getElementById("leaderboardList"); if(!list)return; const allNicks=usersCache.filter(u=>keyNick(u.nick)!==ADMIN_NICK).map(u=>u.nick); const scores=[];
+  for(const nick of allNicks){ const base=baseScoreForNick(nick); const manual=getManualPoints(nick); scores.push({nick,pts:base.pts+manual,ex:base.ex,win:base.win,manual,base:base.pts}); }
+  scores.sort((a,b)=>b.pts-a.pts); list.innerHTML=""; if(!scores.length){list.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:13px">Brak graczy w klasyfikacji.</div>`;return;}
+  scores.forEach((s,i)=>{ const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+"."; const idx=Math.abs(parseInt(simpleHash(keyNick(s.nick)),16))%COLORS.length; const row=document.createElement("div"); row.className="ldr-row"; row.innerHTML=`<div style="width:22px;font-size:13px;color:var(--color-text-tertiary)">${medal}</div><div class="avatar" style="width:30px;height:30px;font-size:11px;background:${BGS[idx]};color:${COLORS[idx]}">${s.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${s.nick}</div><div style="text-align:right"><div style="font-size:15px;font-weight:500;color:#185FA5">${s.pts} pkt</div><div style="font-size:10px;color:var(--color-text-tertiary)"><span style="color:#27500A">${s.ex}×3</span> · <span style="color:#0C447C">${s.win}×1</span>${s.manual ? ` · korekta: ${s.manual > 0 ? "+" : ""}${s.manual}` : ""}</div></div>`; list.appendChild(row); });
+}
+
+function renderAdminList(){ renderAdminMatches(); renderAdminPlayers(); }
+function renderAdminMatches(){
+  const list=document.getElementById("adminMatchList"); if(!list)return; list.innerHTML=""; const byG=groupBy(allMatches(),"g");
+  Object.entries(byG).forEach(([grp,ms])=>{ const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); ms.forEach(m=>{ const off=officialResults[m.id]||{h:"",a:""}; const row=document.createElement("div"); row.className="match-row"; row.innerHTML=`<button class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i></button><span class="team" style="font-size:12px">${m.date} ${m.h}</span><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–"></div><span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); }); });
+}
+
+function renderAdminPlayers(){
+  const pl=document.getElementById("adminPlayerList"); if(!pl)return; pl.innerHTML=""; if(!usersCache.length){pl.innerHTML=`<div style="font-size:12px;color:var(--color-text-tertiary)">Brak graczy</div>`;return;}
+  usersCache.forEach(u=>{ if(!u || !u.nick)return; const idx=Math.abs(parseInt(simpleHash(keyNick(u.nick)),16))%COLORS.length; const base=baseScoreForNick(u.nick).pts; const manual=getManualPoints(u.nick); const total=base+manual; const div=document.createElement("div"); div.className="player-item"; div.innerHTML=`<div class="avatar" style="width:28px;height:28px;font-size:10px;background:${BGS[idx]};color:${COLORS[idx]}">${u.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${u.nick}<div style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">z typów: ${base} pkt</div></div>${keyNick(u.nick)!==ADMIN_NICK?`<div class="admin-points"><input class="inp" style="width:74px;margin:0;text-align:center" type="number" id="adj_${keyNick(u.nick)}" value="${manual}" placeholder="0"><small>= ${total} pkt</small><button class="btn sm" onclick="savePlayerAdjustment('${jsStr(u.nick)}')"><i class="ti ti-device-floppy" aria-hidden="true"></i></button><button class="btn sm danger" onclick="deletePlayer('${jsStr(u.nick)}')"><i class="ti ti-trash" aria-hidden="true"></i></button></div>`:`<span style="font-size:11px;color:var(--color-text-tertiary)">admin</span>`}`; pl.appendChild(div); });
+  const saveAll=document.createElement("button"); saveAll.className="btn primary"; saveAll.style.marginTop="10px"; saveAll.innerHTML='<i class="ti ti-device-floppy"></i> Zapisz korekty punktów'; saveAll.onclick=saveAllPlayerPoints; pl.appendChild(saveAll);
+}
+
+window.savePlayerAdjustment=async function(nick){ const input=document.getElementById("adj_"+keyNick(nick)); if(!input)return; const val=parseInt(input.value||"0")||0; pointAdjustments[keyNick(nick)]=val; await saveMain(); showToast("Zapisano punkty: "+nick); rerenderAll(); }
+window.saveAllPlayerPoints=async function(){ usersCache.forEach(u=>{ if(!u||keyNick(u.nick)===ADMIN_NICK)return; const input=document.getElementById("adj_"+keyNick(u.nick)); if(input) pointAdjustments[keyNick(u.nick)]=parseInt(input.value||"0")||0; }); await saveMain(); showToast("Zapisano korekty punktów."); rerenderAll(); }
+window.deletePlayer=async function(nick){ if(!confirm(`Usunąć gracza "${nick}" i jego typy?`))return; await deleteDoc(doc(db,"users",keyNick(nick))); await deleteDoc(doc(db,"predictions",keyNick(nick))); delete pointAdjustments[keyNick(nick)]; await saveMain(); await loadUsersAndPredictions(); showToast("Usunięto: "+nick); rerenderAll(); }
+window.deleteMatch=async function(matchId){ if(!confirm("Czy na pewno usunąć ten mecz oraz jego oficjalny wynik?"))return; const extraIndex=extraMatches.findIndex(m=>m.id===matchId); if(extraIndex!==-1) extraMatches.splice(extraIndex,1); else if(!deletedMatchIds.includes(matchId)) deletedMatchIds.push(matchId); delete officialResults[matchId]; await saveMain(); showToast("Mecz został usunięty."); rerenderAll(); }
+window.saveOfficial=async function(){ allMatches().forEach(m=>{ const hi=document.getElementById(`o_${m.id}_h`); const ai=document.getElementById(`o_${m.id}_a`); if(hi&&ai&&hi.value!==""&&ai.value!=="") officialResults[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)}; }); await saveMain(); showToast("Wyniki zapisane!"); rerenderAll(); }
+window.fetchLive=async function(){ showToast("Ta funkcja wymaga osobnego backendu. Wpisz wyniki ręcznie."); }
+window.addMatchPrompt=async function(){ const h=prompt("Gospodarz:"); if(!h)return; const a=prompt("Gość:"); if(!a)return; const g=prompt("Grupa:","Inne")||"Inne"; const date=prompt("Data (np. 20.06):","?"); const id="x"+Date.now(); extraMatches.push({id,g,h,a,date:date||"?"}); await saveMain(); showToast("Mecz dodany!"); rerenderAll(); }
+
+document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
+document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
+initFirebase();
+</script>
+</body>
+</html>
