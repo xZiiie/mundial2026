@@ -127,7 +127,7 @@
     <div id="tTyp" class="section active">
       <div class="info-box">
         <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
-        <span>Wpisz swoje typy przed meczem. Mecze z oficjalnym wynikiem są zablokowane.</span>
+        <span>Wpisz swoje typy przed meczem. Mecze z oficjalnym wynikiem są zablokowane. Po zalogowaniu zostaniesz zapamiętany na tym urządzeniu.</span>
       </div>
       <div class="card"><div id="matchList"></div></div>
       <button class="btn primary" style="width:100%;justify-content:center" onclick="savePredictions()">
@@ -196,46 +196,78 @@ const COLORS = ["#185FA5","#0F6E56","#993C1D","#993556","#3B6D11","#854F0B","#53
 const BGS   = ["#E6F1FB","#E1F5EE","#FAECE7","#FBEAF0","#EAF3DE","#FAEEDA","#EEEDFE","#FCEBEB"];
 
 const MATCHES = [
-  {id:"a1",g:"Grupa A",h:"Meksyk",a:"RPA",date:"11.06"},
-  {id:"a2",g:"Grupa A",h:"Korea Płd.",a:"Czechy",date:"12.06"},
-  {id:"a3",g:"Grupa A",h:"Czechy",a:"RPA",date:"18.06"},
-  {id:"a4",g:"Grupa A",h:"Meksyk",a:"Korea Płd.",date:"19.06"},
-  {id:"a5",g:"Grupa A",h:"Czechy",a:"Meksyk",date:"25.06"},
-  {id:"a6",g:"Grupa A",h:"RPA",a:"Korea Płd.",date:"25.06"},
-  {id:"b1",g:"Grupa B",h:"Kanada",a:"Bośnia i Herc.",date:"12.06"},
-  {id:"b2",g:"Grupa B",h:"Szwajcaria",a:"Katar",date:"13.06"},
-  {id:"b3",g:"Grupa B",h:"Katar",a:"Kanada",date:"17.06"},
-  {id:"b4",g:"Grupa B",h:"Bośnia i Herc.",a:"Szwajcaria",date:"18.06"},
-  {id:"b5",g:"Grupa B",h:"Katar",a:"Bośnia i Herc.",date:"22.06"},
-  {id:"b6",g:"Grupa B",h:"Szwajcaria",a:"Kanada",date:"22.06"},
-  {id:"c1",g:"Grupa C",h:"Brazylia",a:"Szkocja",date:"13.06"},
-  {id:"c2",g:"Grupa C",h:"Maroko",a:"Haiti",date:"13.06"},
-  {id:"c3",g:"Grupa C",h:"Haiti",a:"Brazylia",date:"17.06"},
-  {id:"c4",g:"Grupa C",h:"Szkocja",a:"Maroko",date:"18.06"},
-  {id:"c5",g:"Grupa C",h:"Haiti",a:"Szkocja",date:"22.06"},
-  {id:"c6",g:"Grupa C",h:"Brazylia",a:"Maroko",date:"22.06"},
-  {id:"d1",g:"Grupa D",h:"USA",a:"Paragwaj",date:"12.06"},
-  {id:"d2",g:"Grupa D",h:"Turcja",a:"Australia",date:"13.06"},
-  {id:"d3",g:"Grupa D",h:"Australia",a:"USA",date:"17.06"},
-  {id:"d4",g:"Grupa D",h:"Paragwaj",a:"Turcja",date:"18.06"},
-  {id:"d5",g:"Grupa D",h:"Australia",a:"Paragwaj",date:"22.06"},
-  {id:"d6",g:"Grupa D",h:"USA",a:"Turcja",date:"22.06"},
-  {id:"e1",g:"Grupa E",h:"Niemcy",a:"Curaçao",date:"14.06"},
-  {id:"e2",g:"Grupa E",h:"Arabia Saudyjska",a:"Ekwador",date:"14.06"},
-  {id:"f1",g:"Grupa F",h:"Holandia",a:"Tunezja",date:"14.06"},
-  {id:"f2",g:"Grupa F",h:"Japonia",a:"Szwecja",date:"15.06"},
-  {id:"g1",g:"Grupa G",h:"Belgia",a:"Nowa Zelandia",date:"15.06"},
-  {id:"g2",g:"Grupa G",h:"Iran",a:"Egipt",date:"15.06"},
-  {id:"h1",g:"Grupa H",h:"Hiszpania",a:"Arabia Saudyjska",date:"15.06"},
-  {id:"h2",g:"Grupa H",h:"Urugwaj",a:"Ziel. Przylądek",date:"16.06"},
-  {id:"i1",g:"Grupa I",h:"Francja",a:"Irak",date:"16.06"},
-  {id:"i2",g:"Grupa I",h:"Senegal",a:"Norwegia",date:"16.06"},
-  {id:"j1",g:"Grupa J",h:"Argentyna",a:"Algieria",date:"17.06"},
-  {id:"j2",g:"Grupa J",h:"Austria",a:"Jordania",date:"17.06"},
-  {id:"k1",g:"Grupa K",h:"Portugalia",a:"Uzbekistan",date:"18.06"},
-  {id:"k2",g:"Grupa K",h:"Kolumbia",a:"DR Kongo",date:"18.06"},
-  {id:"l1",g:"Grupa L",h:"Anglia",a:"Panama",date:"18.06"},
-  {id:"l2",g:"Grupa L",h:"Chorwacja",a:"Ghana",date:"19.06"},
+  {id:"a1",g:"Grupa A",h:"Meksyk",a:"RPA",date:"11.06",time:"21:00"},
+  {id:"a2",g:"Grupa A",h:"Korea Płd.",a:"Czechy",date:"12.06",time:"18:00"},
+  {id:"a3",g:"Grupa A",h:"Czechy",a:"RPA",date:"18.06",time:"18:00"},
+  {id:"a4",g:"Grupa A",h:"Meksyk",a:"Korea Płd.",date:"19.06",time:"21:00"},
+  {id:"a5",g:"Grupa A",h:"Czechy",a:"Meksyk",date:"25.06",time:"21:00"},
+  {id:"a6",g:"Grupa A",h:"RPA",a:"Korea Płd.",date:"25.06",time:"21:00"},
+  {id:"b1",g:"Grupa B",h:"Kanada",a:"Bośnia i Herc.",date:"12.06",time:"21:00"},
+  {id:"b2",g:"Grupa B",h:"Szwajcaria",a:"Katar",date:"13.06",time:"18:00"},
+  {id:"b3",g:"Grupa B",h:"Katar",a:"Kanada",date:"17.06",time:"18:00"},
+  {id:"b4",g:"Grupa B",h:"Bośnia i Herc.",a:"Szwajcaria",date:"18.06",time:"21:00"},
+  {id:"b5",g:"Grupa B",h:"Katar",a:"Bośnia i Herc.",date:"22.06",time:"21:00"},
+  {id:"b6",g:"Grupa B",h:"Szwajcaria",a:"Kanada",date:"22.06",time:"21:00"},
+  {id:"c1",g:"Grupa C",h:"Brazylia",a:"Szkocja",date:"13.06",time:"21:00"},
+  {id:"c2",g:"Grupa C",h:"Maroko",a:"Haiti",date:"13.06",time:"23:00"},
+  {id:"c3",g:"Grupa C",h:"Haiti",a:"Brazylia",date:"17.06",time:"21:00"},
+  {id:"c4",g:"Grupa C",h:"Szkocja",a:"Maroko",date:"18.06",time:"18:00"},
+  {id:"c5",g:"Grupa C",h:"Haiti",a:"Szkocja",date:"22.06",time:"18:00"},
+  {id:"c6",g:"Grupa C",h:"Brazylia",a:"Maroko",date:"22.06",time:"18:00"},
+  {id:"d1",g:"Grupa D",h:"USA",a:"Paragwaj",date:"12.06",time:"23:00"},
+  {id:"d2",g:"Grupa D",h:"Turcja",a:"Australia",date:"13.06",time:"15:00"},
+  {id:"d3",g:"Grupa D",h:"Australia",a:"USA",date:"17.06",time:"23:00"},
+  {id:"d4",g:"Grupa D",h:"Paragwaj",a:"Turcja",date:"18.06",time:"23:00"},
+  {id:"d5",g:"Grupa D",h:"Australia",a:"Paragwaj",date:"22.06",time:"23:00"},
+  {id:"d6",g:"Grupa D",h:"USA",a:"Turcja",date:"22.06",time:"23:00"},
+  {id:"e1",g:"Grupa E",h:"Niemcy",a:"Curaçao",date:"14.06",time:"18:00"},
+  {id:"e2",g:"Grupa E",h:"Arabia Saudyjska",a:"Ekwador",date:"14.06",time:"21:00"},
+  {id:"e3",g:"Grupa E",h:"Curaçao",a:"Arabia Saudyjska",date:"19.06",time:"18:00"},
+  {id:"e4",g:"Grupa E",h:"Ekwador",a:"Niemcy",date:"20.06",time:"21:00"},
+  {id:"e5",g:"Grupa E",h:"Ekwador",a:"Curaçao",date:"26.06",time:"18:00"},
+  {id:"e6",g:"Grupa E",h:"Niemcy",a:"Arabia Saudyjska",date:"26.06",time:"18:00"},
+  {id:"f1",g:"Grupa F",h:"Holandia",a:"Tunezja",date:"14.06",time:"15:00"},
+  {id:"f2",g:"Grupa F",h:"Japonia",a:"Szwecja",date:"15.06",time:"18:00"},
+  {id:"f3",g:"Grupa F",h:"Tunezja",a:"Japonia",date:"19.06",time:"21:00"},
+  {id:"f4",g:"Grupa F",h:"Szwecja",a:"Holandia",date:"20.06",time:"18:00"},
+  {id:"f5",g:"Grupa F",h:"Szwecja",a:"Tunezja",date:"26.06",time:"21:00"},
+  {id:"f6",g:"Grupa F",h:"Holandia",a:"Japonia",date:"26.06",time:"21:00"},
+  {id:"g1",g:"Grupa G",h:"Belgia",a:"Nowa Zelandia",date:"15.06",time:"21:00"},
+  {id:"g2",g:"Grupa G",h:"Iran",a:"Egipt",date:"15.06",time:"23:00"},
+  {id:"g3",g:"Grupa G",h:"Nowa Zelandia",a:"Iran",date:"20.06",time:"15:00"},
+  {id:"g4",g:"Grupa G",h:"Egipt",a:"Belgia",date:"21.06",time:"21:00"},
+  {id:"g5",g:"Grupa G",h:"Egipt",a:"Nowa Zelandia",date:"27.06",time:"18:00"},
+  {id:"g6",g:"Grupa G",h:"Belgia",a:"Iran",date:"27.06",time:"18:00"},
+  {id:"h1",g:"Grupa H",h:"Hiszpania",a:"Arabia Saudyjska",date:"15.06",time:"15:00"},
+  {id:"h2",g:"Grupa H",h:"Urugwaj",a:"Ziel. Przylądek",date:"16.06",time:"18:00"},
+  {id:"h3",g:"Grupa H",h:"Arabia Saudyjska",a:"Urugwaj",date:"20.06",time:"23:00"},
+  {id:"h4",g:"Grupa H",h:"Ziel. Przylądek",a:"Hiszpania",date:"21.06",time:"18:00"},
+  {id:"h5",g:"Grupa H",h:"Ziel. Przylądek",a:"Arabia Saudyjska",date:"27.06",time:"21:00"},
+  {id:"h6",g:"Grupa H",h:"Hiszpania",a:"Urugwaj",date:"27.06",time:"21:00"},
+  {id:"i1",g:"Grupa I",h:"Francja",a:"Irak",date:"16.06",time:"21:00"},
+  {id:"i2",g:"Grupa I",h:"Senegal",a:"Norwegia",date:"16.06",time:"23:00"},
+  {id:"i3",g:"Grupa I",h:"Irak",a:"Senegal",date:"21.06",time:"15:00"},
+  {id:"i4",g:"Grupa I",h:"Norwegia",a:"Francja",date:"22.06",time:"15:00"},
+  {id:"i5",g:"Grupa I",h:"Norwegia",a:"Irak",date:"28.06",time:"18:00"},
+  {id:"i6",g:"Grupa I",h:"Francja",a:"Senegal",date:"28.06",time:"18:00"},
+  {id:"j1",g:"Grupa J",h:"Argentyna",a:"Algieria",date:"17.06",time:"15:00"},
+  {id:"j2",g:"Grupa J",h:"Austria",a:"Jordania",date:"17.06",time:"18:00"},
+  {id:"j3",g:"Grupa J",h:"Algieria",a:"Austria",date:"22.06",time:"18:00"},
+  {id:"j4",g:"Grupa J",h:"Jordania",a:"Argentyna",date:"23.06",time:"21:00"},
+  {id:"j5",g:"Grupa J",h:"Jordania",a:"Algieria",date:"28.06",time:"21:00"},
+  {id:"j6",g:"Grupa J",h:"Argentyna",a:"Austria",date:"28.06",time:"21:00"},
+  {id:"k1",g:"Grupa K",h:"Portugalia",a:"Uzbekistan",date:"18.06",time:"15:00"},
+  {id:"k2",g:"Grupa K",h:"Kolumbia",a:"DR Kongo",date:"18.06",time:"18:00"},
+  {id:"k3",g:"Grupa K",h:"Uzbekistan",a:"Kolumbia",date:"23.06",time:"18:00"},
+  {id:"k4",g:"Grupa K",h:"DR Kongo",a:"Portugalia",date:"24.06",time:"21:00"},
+  {id:"k5",g:"Grupa K",h:"DR Kongo",a:"Uzbekistan",date:"29.06",time:"18:00"},
+  {id:"k6",g:"Grupa K",h:"Portugalia",a:"Kolumbia",date:"29.06",time:"18:00"},
+  {id:"l1",g:"Grupa L",h:"Anglia",a:"Panama",date:"18.06",time:"21:00"},
+  {id:"l2",g:"Grupa L",h:"Chorwacja",a:"Ghana",date:"19.06",time:"15:00"},
+  {id:"l3",g:"Grupa L",h:"Panama",a:"Chorwacja",date:"24.06",time:"18:00"},
+  {id:"l4",g:"Grupa L",h:"Ghana",a:"Anglia",date:"25.06",time:"18:00"},
+  {id:"l5",g:"Grupa L",h:"Ghana",a:"Panama",date:"29.06",time:"21:00"},
+  {id:"l6",g:"Grupa L",h:"Anglia",a:"Chorwacja",date:"29.06",time:"21:00"}
 ];
 
 let db = null;
@@ -251,13 +283,14 @@ let unsubMain = null;
 function fbReady(){ return firebaseConfig.apiKey && firebaseConfig.apiKey !== "WKLEJ_TUTAJ"; }
 function keyNick(nick){ return String(nick || "").trim().toLowerCase(); }
 function jsStr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' '); }
-function stSessionSet(key,val){ sessionStorage.setItem(key, JSON.stringify(val)); }
-function stSessionGet(key){ const v=sessionStorage.getItem(key); return v ? JSON.parse(v) : null; }
+function stSessionSet(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+function stSessionGet(key){ const v=localStorage.getItem(key); return v ? JSON.parse(v) : null; }
 
 function simpleHash(str){ let h=0; for(let i=0;i<str.length;i++){h=(h*31+str.charCodeAt(i))>>>0;} return h.toString(16); }
 function showToast(msg){ const t=document.getElementById("toastEl"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2400); }
 function groupBy(arr,key){const m={};arr.forEach(x=>{if(!m[x[key]])m[x[key]]=[];m[x[key]].push(x);});return m;}
 function allMatches(){ const base = MATCHES.filter(m => !deletedMatchIds.includes(m.id)); return [...base, ...extraMatches]; }
+function matchDateTime(m){ return `${m.date || "?"}${m.time ? " " + m.time : ""}`; }
 function isAdmin(){ return currentUser && keyNick(currentUser.nick)===ADMIN_NICK; }
 
 async function initFirebase(){
@@ -324,7 +357,7 @@ function getManualPoints(nick){ return parseInt(pointAdjustments[keyNick(nick)] 
 window.showRegView=function(){ document.getElementById("viewLogin").style.display="none"; document.getElementById("viewRegister").style.display="block"; document.getElementById("viewMain").style.display="none"; document.getElementById("regErr").textContent=""; }
 window.showLoginView=function(){ document.getElementById("viewLogin").style.display="block"; document.getElementById("viewRegister").style.display="none"; document.getElementById("viewMain").style.display="none"; document.getElementById("loginErr").textContent=""; document.getElementById("loginPass").value=""; }
 window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin') renderAdminList(); }
-window.doLogout=function(){ currentUser=null; sessionStorage.removeItem("currentUser"); if(unsubMain) unsubMain(); showLoginView(); switchTab("tTyp"); }
+window.doLogout=function(){ currentUser=null; localStorage.removeItem("currentUser"); if(unsubMain) unsubMain(); showLoginView(); switchTab("tTyp"); }
 
 window.doRegister=async function(){
   if(!db){ document.getElementById("regErr").textContent="Brak konfiguracji Firebase."; return; }
@@ -371,7 +404,7 @@ function rerenderAll(){ if(!currentUser)return; renderMatchList(); renderResults
 
 function renderMatchList(){
   const list=document.getElementById("matchList"); if(!list)return; const preds=loadMyPredictions(); list.innerHTML=""; const byG=groupBy(allMatches(),"g");
-  Object.entries(byG).forEach(([grp,ms])=>{ const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); ms.forEach(m=>{ const p=preds[m.id]||{h:"",a:""}; const off=officialResults[m.id]; const row=document.createElement("div"); row.className="match-row"; let mid=""; if(off){ mid=`<div class="res-col"><div style="font-size:14px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div></div>`; } else { mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"></div>${p.h!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">twój: ${p.h}:${p.a}</div>`:""}</div>`; } row.innerHTML=`<span class="team" style="font-size:12px">${m.date} ${m.h}</span>${mid}<span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); }); });
+  Object.entries(byG).forEach(([grp,ms])=>{ const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); ms.forEach(m=>{ const p=preds[m.id]||{h:"",a:""}; const off=officialResults[m.id]; const row=document.createElement("div"); row.className="match-row"; let mid=""; if(off){ mid=`<div class="res-col"><div style="font-size:14px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div></div>`; } else { mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"></div>${p.h!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">twój: ${p.h}:${p.a}</div>`:""}</div>`; } row.innerHTML=`<span class="team" style="font-size:12px">${matchDateTime(m)} ${m.h}</span>${mid}<span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); }); });
 }
 
 window.savePredictions=async function(){ const preds=loadMyPredictions(); allMatches().forEach(m=>{ if(officialResults[m.id])return; const hi=document.getElementById(`p_${m.id}_h`); const ai=document.getElementById(`p_${m.id}_a`); if(hi&&ai&&hi.value!==""&&ai.value!==""){ preds[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)}; }}); await saveMyPredictions(preds); showToast("Typy zapisane!"); rerenderAll(); }
@@ -394,7 +427,7 @@ function renderLeaderboard(){
 function renderAdminList(){ renderAdminMatches(); renderAdminPlayers(); }
 function renderAdminMatches(){
   const list=document.getElementById("adminMatchList"); if(!list)return; list.innerHTML=""; const byG=groupBy(allMatches(),"g");
-  Object.entries(byG).forEach(([grp,ms])=>{ const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); ms.forEach(m=>{ const off=officialResults[m.id]||{h:"",a:""}; const row=document.createElement("div"); row.className="match-row"; row.innerHTML=`<button class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i></button><span class="team" style="font-size:12px">${m.date} ${m.h}</span><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–"></div><span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); }); });
+  Object.entries(byG).forEach(([grp,ms])=>{ const gt=document.createElement("div"); gt.className="g-title"; gt.textContent=grp; list.appendChild(gt); ms.forEach(m=>{ const off=officialResults[m.id]||{h:"",a:""}; const row=document.createElement("div"); row.className="match-row"; row.innerHTML=`<button class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i></button><span class="team" style="font-size:12px">${matchDateTime(m)} ${m.h}</span><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–"></div><span class="team r" style="font-size:12px">${m.a}</span>`; list.appendChild(row); }); });
 }
 
 function renderAdminPlayers(){
@@ -409,7 +442,7 @@ window.deletePlayer=async function(nick){ if(!confirm(`Usunąć gracza "${nick}"
 window.deleteMatch=async function(matchId){ if(!confirm("Czy na pewno usunąć ten mecz oraz jego oficjalny wynik?"))return; const extraIndex=extraMatches.findIndex(m=>m.id===matchId); if(extraIndex!==-1) extraMatches.splice(extraIndex,1); else if(!deletedMatchIds.includes(matchId)) deletedMatchIds.push(matchId); delete officialResults[matchId]; await saveMain(); showToast("Mecz został usunięty."); rerenderAll(); }
 window.saveOfficial=async function(){ allMatches().forEach(m=>{ const hi=document.getElementById(`o_${m.id}_h`); const ai=document.getElementById(`o_${m.id}_a`); if(hi&&ai&&hi.value!==""&&ai.value!=="") officialResults[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)}; }); await saveMain(); showToast("Wyniki zapisane!"); rerenderAll(); }
 window.fetchLive=async function(){ showToast("Ta funkcja wymaga osobnego backendu. Wpisz wyniki ręcznie."); }
-window.addMatchPrompt=async function(){ const h=prompt("Gospodarz:"); if(!h)return; const a=prompt("Gość:"); if(!a)return; const g=prompt("Grupa:","Inne")||"Inne"; const date=prompt("Data (np. 20.06):","?"); const id="x"+Date.now(); extraMatches.push({id,g,h,a,date:date||"?"}); await saveMain(); showToast("Mecz dodany!"); rerenderAll(); }
+window.addMatchPrompt=async function(){ const h=prompt("Gospodarz:"); if(!h)return; const a=prompt("Gość:"); if(!a)return; const g=prompt("Grupa:","Inne")||"Inne"; const date=prompt("Data (np. 20.06):","?"); const time=prompt("Godzina (np. 18:00):","18:00"); const id="x"+Date.now(); extraMatches.push({id,g,h,a,date:date||"?",time:time||""}); await saveMain(); showToast("Mecz dodany!"); rerenderAll(); }
 
 document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
