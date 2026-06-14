@@ -565,11 +565,28 @@ function renderMatchList(){
     } else if(locked){
       mid=`<div class="res-col">${p.h!=="" && p.a!=="" ? `<div style="font-size:13px;font-weight:500">typ: ${p.h}:${p.a}</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak typu</div>`}<div class="lock-note">blokada</div></div>`;
     } else {
-      mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"></div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany typ: ${p.h}:${p.a} · możesz zmienić</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">możesz typować</div>`}</div>`;
+      mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–">${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}</div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany typ: ${p.h}:${p.a} · możesz zmienić albo usunąć</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">możesz typować</div>`}</div>`;
     }
     row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${m.h}</span>${mid}<span class="team r" style="font-size:12px">${m.a}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
     list.appendChild(row);
   });
+}
+
+window.clearMyPrediction=async function(matchId){
+  const m=allMatches().find(x=>x.id===matchId);
+  if(m && isPredictionLocked(m)){
+    showToast("Tego typu nie można już usunąć.");
+    return;
+  }
+  const preds=loadMyPredictions();
+  delete preds[matchId];
+  const hi=document.getElementById(`p_${matchId}_h`);
+  const ai=document.getElementById(`p_${matchId}_a`);
+  if(hi) hi.value="";
+  if(ai) ai.value="";
+  await saveMyPredictions(preds);
+  showToast("Typ usunięty.");
+  rerenderAll();
 }
 
 window.savePredictions=async function(){
@@ -592,7 +609,7 @@ window.savePredictions=async function(){
     changed++;
   });
   await saveMyPredictions(preds);
-  showToast(skippedPartial ? "Zapisano pełne typy. Puste połówki pominięto." : "Typy zapisane / zmienione!");
+  showToast(skippedPartial ? "Zapisano pełne typy. Puste połówki pominięto." : "Typy zapisane / zmienione / usunięte!");
   rerenderAll();
 }
 
@@ -649,18 +666,14 @@ function renderAllPredictions(){
   const champCard=document.createElement("div");
   champCard.className="card";
   champCard.innerHTML=`<span class="label">Typy mistrza świata</span>`;
-  if(officialChampion){
-    let rows=players.map(nick=>{
-      const pick=getChampionForNick(nick);
-      const pts=championScoreForNick(nick);
-      return `<tr><td>${nick}</td><td class="${pick ? "pred-ok" : "pred-empty"}">${pick || "brak"}</td><td>${pts ? "+"+pts : "0"} pkt</td></tr>`;
-    }).join("");
-    champCard.innerHTML += `<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px">Oficjalny mistrz: <b>${officialChampion}</b></div>
-      <table class="pred-table"><thead><tr><th>Gracz</th><th>Typ</th><th>Punkty</th></tr></thead><tbody>${rows}</tbody></table>`;
-  } else {
-    const myPick=getChampionForNick(currentUser.nick);
-    champCard.innerHTML += `<div style="font-size:12px;color:var(--color-text-tertiary)">Typy mistrza będą widoczne po ustawieniu oficjalnego mistrza. Twój typ: <b>${myPick || "brak"}</b></div>`;
-  }
+  let champRows=players.map(nick=>{
+    const pick=getChampionForNick(nick);
+    const pts=championScoreForNick(nick);
+    return `<tr><td>${nick}</td><td class="${pick ? "pred-ok" : "pred-empty"}">${pick || "brak"}</td><td>${officialChampion ? (pts ? "+"+pts : "0") + " pkt" : "—"}</td></tr>`;
+  }).join("");
+  champCard.innerHTML += `
+    ${officialChampion ? `<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px">Oficjalny mistrz: <b>${officialChampion}</b></div>` : `<div style="font-size:12px;color:var(--color-text-tertiary);margin-bottom:6px">Oficjalny mistrz nie jest jeszcze ustawiony.</div>`}
+    <table class="pred-table"><thead><tr><th>Gracz</th><th>Typ mistrza</th><th>Punkty</th></tr></thead><tbody>${champRows}</tbody></table>`;
   list.appendChild(champCard);
 
   let any=false;
