@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
@@ -73,6 +73,34 @@
     .pred-table th{font-size:10px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
     .pred-ok{font-weight:600;color:#185FA5}
     .pred-empty{color:var(--color-text-tertiary)}
+    .dashboard-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px}
+    .next-match-card{background:linear-gradient(135deg,#185FA5,#0C447C);color:#fff;border-radius:14px;padding:14px;box-shadow:0 10px 24px rgba(24,95,165,.18)}
+    .next-match-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;opacity:.78;font-weight:700;margin-bottom:6px}
+    .next-match-teams{font-size:17px;font-weight:800;line-height:1.25}
+    .next-match-meta{font-size:12px;opacity:.9;margin-top:6px}
+    .progress-card{background:#fff;border:0.5px solid var(--color-border-tertiary);border-radius:14px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,.03)}
+    .progress-bar{height:10px;background:var(--color-background-secondary);border-radius:999px;overflow:hidden;margin-top:8px}
+    .progress-fill{height:100%;background:#185FA5;border-radius:999px;transition:width .35s ease}
+    .progress-text{font-size:12px;color:var(--color-text-secondary);display:flex;justify-content:space-between;gap:10px}
+    .podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:8px;align-items:end;margin:8px 0 14px}
+    .podium-card{border:0.5px solid var(--color-border-tertiary);border-radius:14px;background:linear-gradient(180deg,#fff,#f8f9fa);padding:10px 6px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.05);min-width:0}
+    .podium-card.first{padding-top:18px;padding-bottom:18px;border-color:#f0c36a;background:linear-gradient(180deg,#fff8e1,#fff)}
+    .podium-medal{font-size:28px;line-height:1;margin-bottom:5px}
+    .podium-name{font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .podium-points{font-size:18px;font-weight:900;color:#185FA5;margin-top:2px}
+    .podium-sub{font-size:10px;color:var(--color-text-tertiary);margin-top:2px}
+    .save-flash{animation:saveFlash .9s ease}
+    @keyframes saveFlash{0%{box-shadow:0 0 0 0 rgba(24,95,165,.45);transform:scale(1)}35%{box-shadow:0 0 0 8px rgba(24,95,165,.12);transform:scale(1.01)}100%{box-shadow:0 0 0 0 rgba(24,95,165,0);transform:scale(1)}}
+    .toast.success{background:#0F6E56;font-size:13px;padding:11px 16px}
+    .flag{font-size:16px;margin-right:4px}
+    .bracket-wrap{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
+    .bracket-col{min-width:230px;display:flex;flex-direction:column;gap:10px}
+    .bracket-title{font-size:10px;font-weight:700;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+    .bracket-match{background:#fff;border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,.03)}
+    .bracket-team{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:600;padding:4px 0}
+    .bracket-meta{font-size:10px;color:var(--color-text-tertiary);margin-bottom:6px}
+    .bracket-score{font-size:13px;font-weight:800;color:#185FA5}
+    .bracket-pred{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap}
     input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     input[type=number]{-moz-appearance:textfield}
   </style>
@@ -130,6 +158,7 @@
       <button class="tab active" id="tab_tTyp" onclick="switchTab('tTyp')"><i class="ti ti-pencil" aria-hidden="true"></i> Typy</button>
       <button class="tab" id="tab_tWyniki" onclick="switchTab('tWyniki')"><i class="ti ti-trophy" aria-hidden="true"></i> Wyniki</button>
       <button class="tab" id="tab_tTabela" onclick="switchTab('tTabela')"><i class="ti ti-list-numbers" aria-hidden="true"></i> Tabela</button>
+      <button class="tab" id="tab_tDrabinka" onclick="switchTab('tDrabinka')"><i class="ti ti-tournament" aria-hidden="true"></i> Drabinka</button>
       <button class="tab" id="tab_tTypyGraczy" onclick="switchTab('tTypyGraczy')"><i class="ti ti-users" aria-hidden="true"></i> Typy graczy</button>
       <button class="tab" id="adminTab" style="display:none" onclick="switchTab('tAdmin')"><i class="ti ti-settings" aria-hidden="true"></i> Admin</button>
     </div>
@@ -139,11 +168,15 @@
         <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
         <span>Wpisz swoje typy przed meczem. Typowanie meczów blokuje się automatycznie 1 godzinę przed rozpoczęciem meczu. Typ mistrza można zapisać tylko raz. Po zalogowaniu zostaniesz zapamiętany na tym urządzeniu.</span>
       </div>
+      <div class="dashboard-grid">
+        <div id="nextMatchBox"></div>
+        <div id="progressBox"></div>
+      </div>
       <div class="card">
         <span class="label">Typ mistrza świata — 5 pkt</span>
         <div id="championPickBox"></div>
       </div>
-      <div class="card"><div id="matchList"></div></div>
+      <div class="card" id="matchCard"><div id="matchList"></div></div>
       <button class="btn primary" style="width:100%;justify-content:center" onclick="savePredictions()">
         <i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz typy
       </button>
@@ -154,7 +187,7 @@
     </div>
 
     <div id="tTabela" class="section">
-      <div class="card">
+      <div class="card" id="leaderboardCard">
         <span class="label">Klasyfikacja graczy</span>
         <div id="leaderboardList"></div>
       </div>
@@ -163,6 +196,14 @@
         <span class="badge b3">3 pkt</span> dokładny wynik &nbsp;
         <span class="badge b1">1 pkt</span> dobry zwycięzca lub remis
       </div>
+    </div>
+
+    <div id="tDrabinka" class="section">
+      <div class="info-box">
+        <i class="ti ti-tournament" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
+        <span>Tu pojawią się mecze fazy pucharowej dodane przez administratora. Gracze mogą je typować tak samo jak mecze grupowe.</span>
+      </div>
+      <div id="bracketList"></div>
     </div>
 
     <div id="tTypyGraczy" class="section">
@@ -185,8 +226,34 @@
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         <button class="btn primary" onclick="saveOfficial()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz wyniki</button>
-        <button class="btn" onclick="fetchLive()"><i class="ti ti-refresh" aria-hidden="true"></i> Pobierz z internetu</button>
-        <button class="btn" onclick="addMatchPrompt()"><i class="ti ti-plus" aria-hidden="true"></i> Dodaj mecz</button>
+        <button class="btn" onclick="showKnockoutForm()"><i class="ti ti-tournament" aria-hidden="true"></i> Dodaj mecz do drabinki</button>
+      </div>
+      <div id="knockoutFormCard" class="card" style="display:none;margin-top:12px">
+        <span class="label">Dodaj mecz do drabinki</span>
+        <select class="inp" id="koPhase">
+          <option value="1/16 finału">1/16 finału</option>
+          <option value="1/8 finału">1/8 finału</option>
+          <option value="Ćwierćfinał">Ćwierćfinał</option>
+          <option value="Półfinał">Półfinał</option>
+          <option value="Mecz o 3. miejsce">Mecz o 3. miejsce</option>
+          <option value="Finał">Finał</option>
+        </select>
+        <input class="inp" id="koTeam1" placeholder="Drużyna 1">
+        <input class="inp" id="koTeam2" placeholder="Drużyna 2">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="inp" id="koDate" placeholder="Data, np. 04.07" style="flex:1;min-width:130px">
+          <input class="inp" id="koTime" placeholder="Godzina, np. 21:00" style="flex:1;min-width:130px">
+        </div>
+        <div class="err" id="koErr"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" onclick="saveKnockoutForm()"><i class="ti ti-device-floppy"></i> Dodaj do drabinki</button>
+          <button class="btn" onclick="hideKnockoutForm()">Anuluj</button>
+        </div>
+      </div>
+      <div style="margin-top:20px" class="card">
+        <span class="label">Mecze drabinki — usuwanie</span>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px">Tu usuwasz tylko mecze dodane do drabinki, np. 1/16 finału.</div>
+        <div id="adminKnockoutDeleteList"></div>
       </div>
       <div style="margin-top:20px" class="card">
         <span class="label">Gracze — ręczna korekta punktów</span>
@@ -316,10 +383,20 @@ function stSessionSet(key,val){ localStorage.setItem(key, JSON.stringify(val)); 
 function stSessionGet(key){ const v=localStorage.getItem(key); return v ? JSON.parse(v) : null; }
 
 function simpleHash(str){ let h=0; for(let i=0;i<str.length;i++){h=(h*31+str.charCodeAt(i))>>>0;} return h.toString(16); }
-function showToast(msg){ const t=document.getElementById("toastEl"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2400); }
+function showToast(msg, type=""){ const t=document.getElementById("toastEl"); t.textContent=msg; t.classList.toggle("success", type==="success"); t.classList.add("show"); setTimeout(()=>{t.classList.remove("show"); t.classList.remove("success");},2400); }
+function flashElement(id){ const el=document.getElementById(id); if(!el)return; el.classList.remove("save-flash"); void el.offsetWidth; el.classList.add("save-flash"); }
 function groupBy(arr,key){const m={};arr.forEach(x=>{if(!m[x[key]])m[x[key]]=[];m[x[key]].push(x);});return m;}
 function allMatches(){ const base = MATCHES.filter(m => !deletedMatchIds.includes(m.id)); return [...base, ...extraMatches]; }
 function matchDateTime(m){ return `${m.date || "?"}${m.time ? " " + m.time : ""}`; }
+function teamFlag(team){ return ""; }
+function teamName(team){ return team || ""; }
+function formatCountdown(ms){
+  if(ms<=0) return "blokada aktywna";
+  const total=Math.floor(ms/1000), d=Math.floor(total/86400), h=Math.floor((total%86400)/3600), mi=Math.floor((total%3600)/60);
+  if(d>0) return `${d}d ${h}h ${mi}m`;
+  if(h>0) return `${h}h ${mi}m`;
+  return `${mi}m`;
+}
 function allTeamsSorted(){
   const set = new Set();
   allMatches().forEach(m=>{ if(m.h) set.add(m.h); if(m.a) set.add(m.a); });
@@ -327,7 +404,7 @@ function allTeamsSorted(){
 }
 function teamOptionsHtml(selected){
   const sel = selected || "";
-  return `<option value="">— wybierz drużynę —</option>` + allTeamsSorted().map(t=>`<option value="${t.replace(/"/g,'&quot;')}" ${t===sel ? "selected" : ""}>${t}</option>`).join("");
+  return `<option value="">— wybierz drużynę —</option>` + allTeamsSorted().map(t=>`<option value="${String(t).replace(/"/g,'&quot;')}" ${t===sel ? "selected" : ""}>${t}</option>`).join("");
 }
 function matchKickoffMs(m){
   if(m.kickoffUtc){
@@ -356,6 +433,8 @@ function sortedMatches(){
 function dateOnlyLabel(m){
   return m.date || "Bez daty";
 }
+const KNOCKOUT_PHASES=["1/16 finału","1/8 finału","Ćwierćfinał","Półfinał","Mecz o 3. miejsce","Finał"];
+function isKnockoutMatch(m){ return KNOCKOUT_PHASES.includes(m.g); }
 function addDateHeader(list, label){
   const gt=document.createElement("div");
   gt.className="g-title";
@@ -463,7 +542,7 @@ function getManualPoints(nick){ return parseInt(pointAdjustments[keyNick(nick)] 
 
 window.showRegView=function(){ document.getElementById("viewLogin").style.display="none"; document.getElementById("viewRegister").style.display="block"; document.getElementById("viewMain").style.display="none"; document.getElementById("regErr").textContent=""; }
 window.showLoginView=function(){ document.getElementById("viewLogin").style.display="block"; document.getElementById("viewRegister").style.display="none"; document.getElementById("viewMain").style.display="none"; document.getElementById("loginErr").textContent=""; document.getElementById("loginPass").value=""; }
-window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin') renderAdminList(); if(id==='tTypyGraczy') renderAllPredictions(); }
+window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin') renderAdminList(); if(id==='tTypyGraczy') renderAllPredictions(); if(id==='tDrabinka') renderBracket(); }
 window.doLogout=function(){ currentUser=null; localStorage.removeItem("currentUser"); if(unsubMain) unsubMain(); showLoginView(); switchTab("tTyp"); }
 
 window.doRegister=async function(){
@@ -507,7 +586,29 @@ async function enterApp(){
   rerenderAll();
 }
 
-function rerenderAll(){ if(!currentUser)return; renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); renderAllPredictions(); if(isAdmin()) renderAdminList(); }
+function rerenderAll(){ if(!currentUser)return; renderDashboard(); renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); renderBracket(); renderAllPredictions(); if(isAdmin()) renderAdminList(); }
+
+
+function renderDashboard(){
+  const nextBox=document.getElementById("nextMatchBox");
+  const progressBox=document.getElementById("progressBox");
+  if(!nextBox || !progressBox || !currentUser)return;
+  const now=Date.now();
+  const upcoming=sortedMatches().find(m=>{ const t=matchKickoffMs(m); return t && t>now && !officialResults[m.id]; });
+  if(upcoming){
+    const kick=matchKickoffMs(upcoming);
+    const lockAt=kick - 60*60*1000;
+    nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">Najbliższy mecz</div><div class="next-match-teams">${teamName(upcoming.h)} vs ${teamName(upcoming.a)}</div><div class="next-match-meta">${upcoming.date} · ${upcoming.time} · ${upcoming.g || ""}</div><div class="next-match-meta">Do blokady typowania: <b>${formatCountdown(lockAt-now)}</b></div></div>`;
+  } else {
+    nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">Najbliższy mecz</div><div class="next-match-teams">Brak nadchodzących meczów</div></div>`;
+  }
+  const preds=loadMyPredictions();
+  const matches=allMatches().filter(m=>!isKnockoutMatch(m));
+  const total=matches.length;
+  const done=matches.filter(m=>preds[m.id] && preds[m.id].h!=="" && preds[m.id].a!=="").length;
+  const pct=total ? Math.round(done/total*100) : 0;
+  progressBox.innerHTML=`<div class="progress-card"><div class="progress-text"><b>Postęp typowania</b><span>${done}/${total} meczów · ${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>`;
+}
 
 function renderChampionPicker(){
   const box=document.getElementById("championPickBox");
@@ -552,7 +653,7 @@ window.saveChampionPick=async function(){
     return;
   }
   await saveChampionForCurrentUser(sel.value);
-  showToast("Typ mistrza zapisany i zablokowany!");
+  showToast("✅ Typ mistrza zapisany i zablokowany!", "success");
   rerenderAll();
 }
 
@@ -562,7 +663,9 @@ function renderMatchList(){
   const preds={...loadMyPredictions()};
   list.innerHTML="";
   let lastDate="";
-  sortedMatches().forEach(m=>{
+  let anyMatch=false;
+  sortedMatches().filter(m=>!isKnockoutMatch(m)).forEach(m=>{
+    anyMatch=true;
     const dateLabel=dateOnlyLabel(m);
     if(dateLabel!==lastDate){ addDateHeader(list,dateLabel); lastDate=dateLabel; }
     const p=preds[m.id]||{h:"",a:""};
@@ -578,9 +681,35 @@ function renderMatchList(){
     } else {
       mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–">${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}</div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany typ: ${p.h}:${p.a} · możesz zmienić albo usunąć</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">możesz typować</div>`}</div>`;
     }
-    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${m.h}</span>${mid}<span class="team r" style="font-size:12px">${m.a}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
+    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${teamName(m.h)}</span>${mid}<span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
     list.appendChild(row);
   });
+  if(!anyMatch){
+    list.innerHTML=`<div style="font-size:13px;color:var(--color-text-tertiary)">Brak meczów grupowych do typowania. Mecze pucharowe typujesz w zakładce <b>Drabinka</b>.</div>`;
+  }
+}
+
+window.saveSinglePrediction=async function(matchId){
+  const m=allMatches().find(x=>x.id===matchId);
+  if(m && isPredictionLocked(m)){
+    showToast("Tego typu nie można już zapisać.");
+    return;
+  }
+  const hi=document.getElementById(`p_${matchId}_h`);
+  const ai=document.getElementById(`p_${matchId}_a`);
+  if(!hi || !ai)return;
+  const hv=hi.value.trim();
+  const av=ai.value.trim();
+  if(hv==="" || av===""){
+    showToast("Wpisz oba wyniki albo użyj Usuń typ.");
+    return;
+  }
+  const preds={...loadMyPredictions()};
+  preds[matchId]={h:parseInt(hv),a:parseInt(av)};
+  predictionsCache[keyNick(currentUser.nick)] = preds;
+  await saveMyPredictions(preds);
+  showToast("✅ Typ zapisany!", "success");
+  rerenderAll();
 }
 
 window.clearMyPrediction=async function(matchId){
@@ -597,7 +726,7 @@ window.clearMyPrediction=async function(matchId){
   if(hi) hi.value="";
   if(ai) ai.value="";
   await saveMyPredictions(preds);
-  showToast("Typ usunięty.");
+  showToast("✅ Typ usunięty.", "success"); flashElement("matchCard");
   rerenderAll();
 }
 
@@ -621,7 +750,7 @@ window.savePredictions=async function(){
     changed++;
   });
   await saveMyPredictions(preds);
-  showToast(skippedPartial ? "Zapisano pełne typy. Puste połówki pominięto." : "Typy zapisane / zmienione / usunięte!");
+  showToast(skippedPartial ? "Zapisano pełne typy. Puste połówki pominięto." : "✅ Typy zapisane / zmienione / usunięte!", "success"); flashElement("matchCard");
   rerenderAll();
 }
 
@@ -657,13 +786,75 @@ function renderResults(){
     else if(pts===0&&off)badge=`<span style="font-size:11px;color:var(--color-text-tertiary)">0 pkt</span>`;
     const row=document.createElement("div");
     row.className="match-row";
-    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${m.h}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${m.a}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
+    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${teamName(m.h)}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
     card.appendChild(row);
   });
   if(any) list.appendChild(card);
   else list.innerHTML=`<div class="card" style="color:var(--color-text-tertiary);font-size:13px;padding:15px">Brak typów do pokazania. Wpisz swoje typy!</div>`;
 }
 
+
+
+function renderBracket(){
+  const list=document.getElementById("bracketList");
+  if(!list)return;
+  const preds=loadMyPredictions();
+  const kms=allMatches().filter(isKnockoutMatch).sort((a,b)=>{
+    const pa=KNOCKOUT_PHASES.indexOf(a.g), pb=KNOCKOUT_PHASES.indexOf(b.g);
+    if(pa!==pb) return pa-pb;
+    return (matchKickoffMs(a)||0)-(matchKickoffMs(b)||0);
+  });
+  if(!kms.length){
+    list.innerHTML=`<div class="card" style="font-size:13px;color:var(--color-text-tertiary)">Drabinka jest jeszcze pusta. Administrator może dodać mecze fazy pucharowej w panelu Admin.</div>`;
+    return;
+  }
+
+  const byPhase={};
+  KNOCKOUT_PHASES.forEach(p=>byPhase[p]=[]);
+  kms.forEach(m=>{ if(!byPhase[m.g]) byPhase[m.g]=[]; byPhase[m.g].push(m); });
+
+  const wrap=document.createElement("div");
+  wrap.className="bracket-wrap";
+  KNOCKOUT_PHASES.forEach(phase=>{
+    const matches=byPhase[phase] || [];
+    if(!matches.length)return;
+    const col=document.createElement("div");
+    col.className="bracket-col";
+    col.innerHTML=`<div class="bracket-title">${phase}</div>`;
+    matches.forEach(m=>{
+      const off=officialResults[m.id];
+      const p=preds[m.id]||{h:"",a:""};
+      const locked=isPredictionLocked(m);
+      const box=document.createElement("div");
+      box.className="bracket-match" + (locked ? " match-locked" : "");
+      let mid="";
+      if(off){
+        mid=`<div class="bracket-score">${off.h}:${off.a}</div>`;
+      }else if(locked){
+        mid=`<div class="lock-note">blokada</div>${p.h!==""&&p.a!==""?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px">typ: ${p.h}:${p.a}</div>`:""}`;
+      }else{
+        mid=`<div class="bracket-pred">
+          <input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–">
+          <span class="sep">:</span>
+          <input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–">
+          <button class="btn sm primary" type="button" onclick="saveSinglePrediction('${jsStr(m.id)}')" title="Zapisz typ" style="padding:4px 6px"><i class="ti ti-device-floppy"></i></button>
+          ${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}
+        </div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary);text-align:center;margin-top:4px">zapisany typ: ${p.h}:${p.a} · możesz zmienić albo usunąć</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary);text-align:center;margin-top:4px">wpisz typ i kliknij zapisz</div>`}`;
+      }
+      box.innerHTML=`<div class="bracket-meta">${m.date || "?"} ${m.time || ""}${isAdmin()?` <button type="button" class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" title="Usuń mecz" style="float:right;padding:3px 6px"><i class="ti ti-trash"></i></button>`:""}</div>
+        <div class="bracket-team"><span>${teamName(m.h)}</span></div>
+        <div style="display:flex;justify-content:center;margin:4px 0">${mid}</div>
+        <div class="bracket-team"><span>${teamName(m.a)}</span></div>`;
+      col.appendChild(box);
+    });
+    wrap.appendChild(col);
+  });
+  list.innerHTML="";
+  const card=document.createElement("div");
+  card.className="card";
+  card.appendChild(wrap);
+  list.appendChild(card);
+}
 
 function renderAllPredictions(){
   const list=document.getElementById("allPredictionsList");
@@ -722,13 +913,85 @@ function renderAllPredictions(){
 }
 
 function renderLeaderboard(){
-  const list=document.getElementById("leaderboardList"); if(!list)return; const allNicks=usersCache.filter(u=>keyNick(u.nick)!==ADMIN_NICK).map(u=>u.nick); const scores=[];
-  for(const nick of allNicks){ const base=baseScoreForNick(nick); const manual=getManualPoints(nick); const champ=championScoreForNick(nick); scores.push({nick,pts:base.pts+manual+champ,ex:base.ex,win:base.win,manual,base:base.pts,champ}); }
-  scores.sort((a,b)=>b.pts-a.pts); list.innerHTML=""; if(!scores.length){list.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:13px">Brak graczy w klasyfikacji.</div>`;return;}
-  scores.forEach((s,i)=>{ const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+"."; const idx=Math.abs(parseInt(simpleHash(keyNick(s.nick)),16))%COLORS.length; const row=document.createElement("div"); row.className="ldr-row"; row.innerHTML=`<div style="width:22px;font-size:13px;color:var(--color-text-tertiary)">${medal}</div><div class="avatar" style="width:30px;height:30px;font-size:11px;background:${BGS[idx]};color:${COLORS[idx]}">${s.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${s.nick}</div><div style="text-align:right"><div style="font-size:15px;font-weight:500;color:#185FA5">${s.pts} pkt</div><div style="font-size:10px;color:var(--color-text-tertiary)"><span style="color:#27500A">${s.ex}×3</span> · <span style="color:#0C447C">${s.win}×1</span>${s.champ ? ` · mistrz: +${s.champ}` : ""}${s.manual ? ` · korekta: ${s.manual > 0 ? "+" : ""}${s.manual}` : ""}</div></div>`; list.appendChild(row); });
+  const list=document.getElementById("leaderboardList");
+  if(!list)return;
+  const allNicks=usersCache.filter(u=>keyNick(u.nick)!==ADMIN_NICK).map(u=>u.nick);
+  const scores=[];
+  for(const nick of allNicks){
+    const base=baseScoreForNick(nick);
+    const manual=getManualPoints(nick);
+    const champ=championScoreForNick(nick);
+    scores.push({nick,pts:base.pts+manual+champ,ex:base.ex,win:base.win,manual,base:base.pts,champ});
+  }
+
+  // Kolejność przy remisie:
+  // 1) więcej punktów łącznie
+  // 2) więcej dokładnych wyników 3-punktowych
+  // 3) więcej trafień za 1 punkt
+  // 4) punkty za mistrza
+  // 5) korekta admina
+  // 6) nick alfabetycznie
+  scores.sort((a,b)=>
+    b.pts-a.pts ||
+    b.ex-a.ex ||
+    b.win-a.win ||
+    b.champ-a.champ ||
+    b.manual-a.manual ||
+    a.nick.localeCompare(b.nick,"pl")
+  );
+
+  list.innerHTML="";
+  if(!scores.length){
+    list.innerHTML=`<div style="color:var(--color-text-tertiary);font-size:13px">Brak graczy w klasyfikacji.</div>`;
+    return;
+  }
+
+  if(scores.length>=3){
+    const top=[scores[1],scores[0],scores[2]];
+    const cls=["second","first","third"];
+    const medals=["🥈","🥇","🥉"];
+    const places=["2. miejsce","1. miejsce","3. miejsce"];
+    const podium=document.createElement("div");
+    podium.className="podium";
+    podium.innerHTML=top.map((s,i)=>`<div class="podium-card ${cls[i]}"><div class="podium-medal">${medals[i]}</div><div class="podium-name">${s.nick}</div><div class="podium-points">${s.pts}</div><div class="podium-sub">${places[i]} · ${s.ex}× dokładny</div></div>`).join("");
+    list.appendChild(podium);
+  } else if(scores.length===2){
+    const podium=document.createElement("div");
+    podium.className="podium";
+    podium.style.gridTemplateColumns="1fr 1fr";
+    podium.innerHTML=scores.map((s,i)=>`<div class="podium-card ${i===0 ? "first" : "second"}"><div class="podium-medal">${i===0 ? "🥇" : "🥈"}</div><div class="podium-name">${s.nick}</div><div class="podium-points">${s.pts}</div><div class="podium-sub">${i===0 ? "1." : "2."} miejsce · ${s.ex}× dokładny</div></div>`).join("");
+    list.appendChild(podium);
+  }
+
+  const startIndex = scores.length >= 3 ? 3 : scores.length;
+  if(scores.length > startIndex){
+    const restTitle=document.createElement("div");
+    restTitle.className="g-title";
+    restTitle.textContent="Pozostałe miejsca";
+    list.appendChild(restTitle);
+  }
+
+  scores.slice(startIndex).forEach((s,idx)=>{
+    const place=startIndex+idx+1;
+    const row=document.createElement("div");
+    row.className="ldr-row";
+    const avatarIdx=Math.abs(parseInt(simpleHash(keyNick(s.nick)),16))%COLORS.length;
+    row.innerHTML=`<div style="width:22px;font-size:13px;color:var(--color-text-tertiary)">${place}.</div><div class="avatar" style="width:30px;height:30px;font-size:11px;background:${BGS[avatarIdx]};color:${COLORS[avatarIdx]}">${s.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${s.nick}</div><div style="text-align:right"><div style="font-size:15px;font-weight:500;color:#185FA5">${s.pts} pkt</div><div style="font-size:10px;color:var(--color-text-tertiary)"><span style="color:#27500A">${s.ex}×3</span> · <span style="color:#0C447C">${s.win}×1</span>${s.champ ? ` · mistrz: +${s.champ}` : ""}${s.manual ? ` · korekta: ${s.manual > 0 ? "+" : ""}${s.manual}` : ""}</div></div>`;
+    list.appendChild(row);
+  });
+
+  const note=document.createElement("div");
+  note.style.cssText="margin-top:10px;font-size:10px;color:var(--color-text-tertiary);line-height:1.4";
+  note.innerHTML="Przy tej samej liczbie punktów wyżej jest gracz z większą liczbą dokładnych wyników, potem z większą liczbą trafień za 1 pkt.";
+  list.appendChild(note);
 }
 
-function renderAdminList(){ renderAdminChampion(); renderAdminMatches(); renderAdminPlayers(); }
+function renderAdminList(){
+  try{ renderAdminChampion(); }catch(e){ console.error("renderAdminChampion", e); const box=document.getElementById("adminChampionBox"); if(box) box.innerHTML='<div style="font-size:12px;color:#A32D2D">Błąd ładowania mistrza: '+e.message+'</div>'; }
+  try{ renderAdminMatches(); }catch(e){ console.error("renderAdminMatches", e); const box=document.getElementById("adminMatchList"); if(box) box.innerHTML='<div style="font-size:12px;color:#A32D2D">Błąd ładowania meczów: '+e.message+'</div>'; }
+  try{ renderAdminKnockoutDeleteList(); }catch(e){ console.error("renderAdminKnockoutDeleteList", e); const box=document.getElementById("adminKnockoutDeleteList"); if(box) box.innerHTML='<div style="font-size:12px;color:#A32D2D">Błąd ładowania listy drabinki: '+e.message+'</div>'; }
+  try{ renderAdminPlayers(); }catch(e){ console.error("renderAdminPlayers", e); const box=document.getElementById("adminPlayerList"); if(box) box.innerHTML='<div style="font-size:12px;color:#A32D2D">Błąd ładowania graczy: '+e.message+'</div>'; }
+}
 function renderAdminChampion(){
   const box=document.getElementById("adminChampionBox");
   if(!box)return;
@@ -763,9 +1026,90 @@ function renderAdminMatches(){
     const off=officialResults[m.id]||{h:"",a:""};
     const row=document.createElement("div");
     row.className="match-row";
-    row.innerHTML=`<button class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i></button><span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${m.h}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–"><button class="btn sm" onclick="saveOfficialMatch('${jsStr(m.id)}')" title="Zapisz ten wynik"><i class="ti ti-device-floppy"></i></button><button class="btn sm danger" onclick="clearOfficialMatch('${jsStr(m.id)}')" title="Wyczyść wynik"><i class="ti ti-x"></i></button></div><span class="team r" style="font-size:12px">${m.a}</span>`;
+    row.innerHTML=`<button type="button" class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i> Usuń</button>
+      <span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${teamName(m.h)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center">
+        <input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–">
+        <span class="sep">:</span>
+        <input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–">
+        <button class="btn sm" onclick="saveOfficialMatch('${jsStr(m.id)}')" title="Zapisz ten wynik"><i class="ti ti-device-floppy"></i></button>
+        <button class="btn sm danger" onclick="clearOfficialMatch('${jsStr(m.id)}')" title="Wyczyść wynik"><i class="ti ti-x"></i></button>
+      </div>
+      <span class="team r" style="font-size:12px">${teamName(m.a)}</span>`;
     list.appendChild(row);
   });
+}
+function renderAdminKnockoutDeleteList(){
+  const box=document.getElementById("adminKnockoutDeleteList");
+  if(!box)return;
+  const kms=extraMatches.filter(m=>isKnockoutMatch(m)).sort((a,b)=>{
+    const pa=KNOCKOUT_PHASES.indexOf(a.g), pb=KNOCKOUT_PHASES.indexOf(b.g);
+    if(pa!==pb)return pa-pb;
+    return (matchKickoffMs(a)||0)-(matchKickoffMs(b)||0);
+  });
+  if(!kms.length){
+    box.innerHTML=`<div style="font-size:12px;color:var(--color-text-tertiary)">Brak meczów dodanych do drabinki.</div>`;
+    return;
+  }
+  box.innerHTML="";
+  kms.forEach(m=>{
+    const row=document.createElement("div");
+    row.className="player-item";
+    row.innerHTML=`<div style="flex:1">
+      <div style="font-size:13px;font-weight:600">${m.h} — ${m.a}</div>
+      <div style="font-size:10px;color:var(--color-text-tertiary)">${m.g} · ${m.date || "?"} ${m.time || ""} · ID: ${m.id}</div>
+    </div>
+    <button type="button" class="btn sm danger" onclick="deleteKnockoutMatchDirect('${jsStr(m.id)}')"><i class="ti ti-trash"></i> Usuń</button>`;
+    box.appendChild(row);
+  });
+}
+
+window.deleteKnockoutMatchDirect=async function(matchId){
+  if(!isAdmin()){
+    alert("Tylko admin może usuwać mecze.");
+    return;
+  }
+  const match=extraMatches.find(m=>m.id===matchId);
+  if(!match){
+    alert("Nie znaleziono meczu w drabince. Odśwież stronę i spróbuj ponownie.");
+    return;
+  }
+  if(!confirm(`Usunąć mecz z drabinki: ${match.h} — ${match.a}?`))return;
+
+  try{
+    extraMatches = extraMatches.filter(m=>m.id!==matchId);
+    if(officialResults && Object.prototype.hasOwnProperty.call(officialResults, matchId)){
+      delete officialResults[matchId];
+    }
+
+    // Zapisz najpierw samą listę meczów.
+    await saveMain();
+
+    // Usuń typy tego meczu lokalnie i w Firebase.
+    const ps=await getDocs(collection(db,"predictions"));
+    const writes=[];
+    ps.forEach(snap=>{
+      const data=snap.data() || {};
+      const preds={...(data.preds || {})};
+      if(Object.prototype.hasOwnProperty.call(preds, matchId)){
+        delete preds[matchId];
+        writes.push(setDoc(doc(db,"predictions",snap.id),{
+          nick:data.nick || snap.id,
+          preds,
+          champion:data.champion || "",
+          updatedAt:Date.now()
+        }));
+      }
+    });
+    if(writes.length) await Promise.all(writes);
+
+    await loadSharedOnce();
+    showToast("✅ Mecz z drabinki usunięty.", "success");
+    rerenderAll();
+  }catch(e){
+    console.error(e);
+    alert("Błąd usuwania meczu z drabinki: " + (e.message || e));
+  }
 }
 
 function renderAdminPlayers(){
@@ -777,7 +1121,67 @@ function renderAdminPlayers(){
 window.savePlayerAdjustment=async function(nick){ const input=document.getElementById("adj_"+keyNick(nick)); if(!input)return; const val=parseInt(input.value||"0")||0; pointAdjustments[keyNick(nick)]=val; await saveMain(); showToast("Zapisano punkty: "+nick); rerenderAll(); }
 window.saveAllPlayerPoints=async function(){ usersCache.forEach(u=>{ if(!u||keyNick(u.nick)===ADMIN_NICK)return; const input=document.getElementById("adj_"+keyNick(u.nick)); if(input) pointAdjustments[keyNick(u.nick)]=parseInt(input.value||"0")||0; }); await saveMain(); showToast("Zapisano korekty punktów."); rerenderAll(); }
 window.deletePlayer=async function(nick){ if(!confirm(`Usunąć gracza "${nick}" i jego typy?`))return; await deleteDoc(doc(db,"users",keyNick(nick))); await deleteDoc(doc(db,"predictions",keyNick(nick))); delete pointAdjustments[keyNick(nick)]; delete championPredictionsCache[keyNick(nick)]; await saveMain(); await loadUsersAndPredictions(); showToast("Usunięto: "+nick); rerenderAll(); }
-window.deleteMatch=async function(matchId){ if(!confirm("Czy na pewno usunąć ten mecz oraz jego oficjalny wynik?"))return; const extraIndex=extraMatches.findIndex(m=>m.id===matchId); if(extraIndex!==-1) extraMatches.splice(extraIndex,1); else if(!deletedMatchIds.includes(matchId)) deletedMatchIds.push(matchId); delete officialResults[matchId]; await saveMain(); showToast("Mecz został usunięty."); rerenderAll(); }
+window.deleteMatch=async function(matchId){
+  if(!isAdmin()){
+    showToast("Tylko admin może usuwać mecze.");
+    return;
+  }
+  if(!confirm("Usunąć ten mecz?")) return;
+
+  try{
+    const wasExtra = extraMatches.some(m=>m.id===matchId);
+    const isBuiltIn = MATCHES.some(m=>m.id===matchId);
+
+    // Usuń z lokalnej listy.
+    extraMatches = extraMatches.filter(m=>m.id!==matchId);
+
+    // Jeżeli to mecz wbudowany, dodaj go do ukrytych.
+    if(isBuiltIn && !deletedMatchIds.includes(matchId)){
+      deletedMatchIds.push(matchId);
+    }
+
+    // Usuń oficjalny wynik.
+    if(officialResults && Object.prototype.hasOwnProperty.call(officialResults, matchId)){
+      delete officialResults[matchId];
+    }
+
+    // NAJWAŻNIEJSZE: najpierw zapisz usunięcie meczu do app/main.
+    // Dzięki temu nawet jeśli czyszczenie typów graczy się nie uda, mecz znika.
+    await saveMain();
+
+    // Od razu odśwież ekran.
+    showToast(wasExtra ? "✅ Mecz z drabinki usunięty." : "✅ Mecz usunięty.", "success");
+    rerenderAll();
+
+    // Potem spróbuj posprzątać typy graczy dla tego meczu.
+    try{
+      const ps=await getDocs(collection(db,"predictions"));
+      const writes=[];
+      ps.forEach(snap=>{
+        const data=snap.data() || {};
+        const preds={...(data.preds || {})};
+        if(Object.prototype.hasOwnProperty.call(preds, matchId)){
+          delete preds[matchId];
+          writes.push(setDoc(doc(db,"predictions",snap.id),{
+            nick:data.nick || snap.id,
+            preds,
+            champion:data.champion || "",
+            updatedAt:Date.now()
+          }));
+        }
+      });
+      if(writes.length) await Promise.all(writes);
+      await loadUsersAndPredictions();
+      rerenderAll();
+    }catch(cleanErr){
+      console.warn("Nie udało się wyczyścić typów usuniętego meczu:", cleanErr);
+    }
+  }catch(e){
+    console.error("Błąd usuwania meczu:", e);
+    alert("Nie udało się usunąć meczu: " + (e.message || e));
+  }
+}
+
 window.saveOfficialMatch=async function(matchId){
   const hi=document.getElementById(`o_${matchId}_h`);
   const ai=document.getElementById(`o_${matchId}_a`);
@@ -795,7 +1199,7 @@ window.saveOfficialMatch=async function(matchId){
   }
   officialResults[matchId]={h:parseInt(hi.value),a:parseInt(ai.value)};
   await saveMain();
-  showToast("Wynik zmieniony.");
+  showToast("✅ Wynik zmieniony.", "success");
   rerenderAll();
 }
 window.clearOfficialMatch=async function(matchId){
@@ -817,12 +1221,53 @@ window.saveOfficial=async function(){
     else if(hi.value!=="" && ai.value!=="") officialResults[m.id]={h:parseInt(hi.value),a:parseInt(ai.value)};
   });
   await saveMain();
-  showToast("Wyniki zapisane / zaktualizowane!");
+  showToast("✅ Wyniki zapisane / zaktualizowane!", "success"); flashElement("leaderboardCard");
   rerenderAll();
 }
 window.fetchLive=async function(){ showToast("Ta funkcja wymaga osobnego backendu. Wpisz wyniki ręcznie."); }
-window.addMatchPrompt=async function(){ const h=prompt("Gospodarz:"); if(!h)return; const a=prompt("Gość:"); if(!a)return; const g=prompt("Grupa:","Inne")||"Inne"; const date=prompt("Data w czasie polskim (np. 20.06):","?"); const time=prompt("Godzina w czasie polskim (np. 18:00):","18:00"); let kickoffUtc=""; const [d,mo]=String(date||"").split(".").map(Number); const [hh,mm]=String(time||"").split(":").map(Number); if(d && mo && Number.isFinite(hh)){ kickoffUtc = new Date(2026, mo-1, d, hh||0, mm||0, 0).toISOString(); } const id="x"+Date.now(); extraMatches.push({id,g,h,a,date:date||"?",time:time||"",kickoffUtc}); await saveMain(); showToast("Mecz dodany!"); rerenderAll(); }
 
+window.showKnockoutForm=function(){
+  const card=document.getElementById("knockoutFormCard");
+  if(card) card.style.display="block";
+  const err=document.getElementById("koErr");
+  if(err) err.textContent="";
+}
+window.hideKnockoutForm=function(){
+  const card=document.getElementById("knockoutFormCard");
+  if(card) card.style.display="none";
+}
+window.saveKnockoutForm=async function(){
+  const phase=document.getElementById("koPhase")?.value || "";
+  const h=document.getElementById("koTeam1")?.value.trim() || "";
+  const a=document.getElementById("koTeam2")?.value.trim() || "";
+  const date=document.getElementById("koDate")?.value.trim() || "";
+  const time=document.getElementById("koTime")?.value.trim() || "";
+  const err=document.getElementById("koErr");
+  if(err) err.textContent="";
+  if(!phase || !KNOCKOUT_PHASES.includes(phase)){ if(err) err.textContent="Wybierz rundę."; return; }
+  if(!h || !a){ if(err) err.textContent="Wpisz obie drużyny."; return; }
+  if(!date || !time){ if(err) err.textContent="Wpisz datę i godzinę."; return; }
+
+  let kickoffUtc="";
+  const [d,mo]=String(date||"").split(".").map(Number);
+  const [hh,mm]=String(time||"").split(":").map(Number);
+  if(d && mo && Number.isFinite(hh)){
+    kickoffUtc = new Date(2026, mo-1, d, hh||0, mm||0, 0).toISOString();
+  } else {
+    if(err) err.textContent="Podaj datę i godzinę w formacie np. 04.07 oraz 21:00.";
+    return;
+  }
+
+  const id="ko"+Date.now();
+  extraMatches.push({id,g:phase,h,a,date,time,kickoffUtc});
+  await saveMain();
+  ["koTeam1","koTeam2","koDate","koTime"].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=""; });
+  hideKnockoutForm();
+  showToast("✅ Mecz dodany do drabinki!", "success");
+  rerenderAll();
+}
+
+window.fetchLive=async function(){ showToast("Ta funkcja została wyłączona."); }
 document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
 initFirebase();
