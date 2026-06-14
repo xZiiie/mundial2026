@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
@@ -103,6 +103,70 @@
     .bracket-pred{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:5px;flex-wrap:wrap}
     input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     input[type=number]{-moz-appearance:textfield}
+
+    /* === MOBILE / WORLD CUP SKIN === */
+    body{
+      min-height:100vh;
+      background:
+        radial-gradient(circle at 10% -10%, rgba(24,95,165,.18), transparent 32%),
+        radial-gradient(circle at 95% 0%, rgba(15,110,86,.16), transparent 28%),
+        linear-gradient(180deg,#eef5ff 0%,#f7fafc 45%,#eef3f7 100%);
+      padding: max(12px, env(safe-area-inset-top)) 12px calc(92px + env(safe-area-inset-bottom));
+    }
+    .app{max-width:760px;padding:.5rem 0}
+    .card{border:1px solid rgba(255,255,255,.8);border-radius:18px;padding:1rem;box-shadow:0 12px 30px rgba(15,23,42,.07);backdrop-filter:blur(10px)}
+    .hdr{position:sticky;top:0;z-index:20;background:rgba(247,250,252,.82);backdrop-filter:blur(14px);padding:10px 2px;border-radius:0 0 18px 18px;margin-bottom:12px}
+    .hdr-title{font-weight:800;letter-spacing:-.03em}
+    .avatar{box-shadow:0 8px 18px rgba(0,0,0,.08)}
+    .tabs{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:50;margin:0;padding:8px;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border:1px solid rgba(222,226,230,.9);border-radius:22px;box-shadow:0 16px 38px rgba(15,23,42,.18);display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .tab{border:none;border-radius:15px;padding:9px 6px;font-size:11px;justify-content:center;text-align:center;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:50px}
+    .tab i{font-size:17px}
+    .tab.active{background:linear-gradient(135deg,#185FA5,#0C447C);color:#fff;box-shadow:0 8px 16px rgba(24,95,165,.22)}
+    .btn{border-radius:14px;padding:11px 15px;min-height:42px;touch-action:manipulation}
+    .btn.primary{background:linear-gradient(135deg,#185FA5,#0C447C);border:none;box-shadow:0 9px 18px rgba(24,95,165,.20)}
+    .btn.danger{border:none;box-shadow:0 8px 16px rgba(163,45,45,.16)}
+    .inp{border-radius:14px;min-height:44px;background:#fff;border:1px solid #dfe7ef}
+    .info-box{border-radius:16px;background:rgba(255,255,255,.72);border:1px solid rgba(222,226,230,.7)}
+    .next-match-card{border-radius:20px;background:linear-gradient(135deg,rgba(24,95,165,.97),rgba(12,68,124,.97));box-shadow:0 16px 34px rgba(24,95,165,.22)}
+    .progress-card{border-radius:18px}
+    .progress-fill{background:linear-gradient(90deg,#185FA5,#16a085)}
+    .g-title{margin-top:18px;padding:8px 10px;border:none;border-radius:999px;background:#eaf1f8;color:#385067}
+    .match-row{background:#fff;border:1px solid #eef2f6;border-radius:17px;padding:11px 10px;margin:8px 0;box-shadow:0 6px 16px rgba(15,23,42,.04);align-items:center}
+    .match-row:last-child{border-bottom:1px solid #eef2f6}
+    .match-locked{background:#fff7ed;border-color:#fed7aa}
+    .team{font-size:12px;line-height:1.25}
+    .match-date{display:inline-block;padding:3px 7px;border-radius:999px;background:#f1f5f9;margin-bottom:5px;font-size:10px}
+    .sc{width:44px;height:42px;border-radius:13px;background:#fff;border:1px solid #d8e2ec;font-size:16px}
+    .res-col{min-width:96px}
+    .save-floating{position:sticky;bottom:calc(86px + env(safe-area-inset-bottom));z-index:30;margin-top:10px;border-radius:18px!important;min-height:52px!important;font-size:14px!important}
+    .toast{top:auto;bottom:calc(92px + env(safe-area-inset-bottom));left:16px;right:16px;text-align:center;border-radius:18px;padding:14px 16px;font-size:14px;box-shadow:0 16px 36px rgba(15,23,42,.22);transform:translateY(12px);transition:opacity .25s, transform .25s}
+    .toast.show{transform:translateY(0)}
+    .podium-card{border-radius:18px}
+    .bracket-wrap{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:12px}
+    .bracket-col{min-width:82vw;scroll-snap-align:start}
+    .bracket-match{border-radius:18px;padding:12px}
+    .bracket-pred .btn{min-height:36px}
+    .pred-table{font-size:11px}
+    .pred-table th,.pred-table td{padding:7px 3px}
+    #viewLogin .hdr,#viewRegister .hdr{position:static;background:transparent;backdrop-filter:none}
+    #viewLogin .card,#viewRegister .card{margin-top:36px!important;border-radius:24px;padding:1.35rem;box-shadow:0 20px 50px rgba(15,23,42,.12)}
+    #viewLogin .hdr-title,#viewRegister .hdr-title{width:100%;text-align:center;font-size:25px;margin-top:26px}
+    @media (min-width:700px){
+      .tabs{grid-template-columns:repeat(6,1fr);max-width:760px;margin:auto}
+      .bracket-col{min-width:230px}
+      body{padding-left:20px;padding-right:20px}
+    }
+    @media (max-width:420px){
+      .match-row{gap:6px;padding:10px 8px}
+      .team{font-size:11.5px}
+      .sc{width:40px;height:40px}
+      .res-col{min-width:90px}
+      .btn{padding:10px 12px}
+      .podium{gap:5px}
+      .podium-points{font-size:16px}
+      .podium-medal{font-size:24px}
+    }
+
   </style>
 </head>
 <body>
@@ -177,7 +241,7 @@
         <div id="championPickBox"></div>
       </div>
       <div class="card" id="matchCard"><div id="matchList"></div></div>
-      <button class="btn primary" style="width:100%;justify-content:center" onclick="savePredictions()">
+      <button class="btn primary save-floating" style="width:100%;justify-content:center" onclick="savePredictions()">
         <i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz typy
       </button>
     </div>
@@ -679,7 +743,7 @@ function renderMatchList(){
     } else if(locked){
       mid=`<div class="res-col">${p.h!=="" && p.a!=="" ? `<div style="font-size:13px;font-weight:500">typ: ${p.h}:${p.a}</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak typu</div>`}<div class="lock-note">blokada</div></div>`;
     } else {
-      mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–">${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}</div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany typ: ${p.h}:${p.a} · możesz zmienić albo usunąć</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">możesz typować</div>`}</div>`;
+      mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"><button class="btn sm primary" type="button" onclick="saveSinglePrediction('${jsStr(m.id)}')" title="Zapisz ten typ" style="padding:4px 7px"><i class="ti ti-check"></i></button>${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}</div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany: ${p.h}:${p.a} · możesz zmienić</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">wpisz i kliknij ✓</div>`}</div>`;
     }
     row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${teamName(m.h)}</span>${mid}<span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
     list.appendChild(row);
@@ -708,7 +772,7 @@ window.saveSinglePrediction=async function(matchId){
   preds[matchId]={h:parseInt(hv),a:parseInt(av)};
   predictionsCache[keyNick(currentUser.nick)] = preds;
   await saveMyPredictions(preds);
-  showToast("✅ Typ zapisany!", "success");
+  showToast("✅ Typ zapisany — powodzenia!", "success");
   rerenderAll();
 }
 
@@ -726,7 +790,7 @@ window.clearMyPrediction=async function(matchId){
   if(hi) hi.value="";
   if(ai) ai.value="";
   await saveMyPredictions(preds);
-  showToast("✅ Typ usunięty.", "success"); flashElement("matchCard");
+  showToast("🗑️ Typ usunięty.", "success"); flashElement("matchCard");
   rerenderAll();
 }
 
