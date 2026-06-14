@@ -439,7 +439,18 @@ async function loadUsersAndPredictions(){
 function getPredsForNick(nick){ return predictionsCache[keyNick(nick)] || {}; }
 function getChampionForNick(nick){ return championPredictionsCache[keyNick(nick)] || ""; }
 function loadMyPredictions(){ return getPredsForNick(currentUser.nick); }
-async function saveMyPredictions(preds){ await setDoc(doc(db,"predictions",keyNick(currentUser.nick)), {nick:currentUser.nick, preds, updatedAt:Date.now()}, {merge:true}); predictionsCache[keyNick(currentUser.nick)]=preds; }
+async function saveMyPredictions(preds){
+  // Pełny zapis dokumentu bez merge:true, żeby usunięty typ naprawdę zniknął z Firebase.
+  // Zachowujemy przy tym typ mistrza.
+  const k=keyNick(currentUser.nick);
+  await setDoc(doc(db,"predictions",k), {
+    nick: currentUser.nick,
+    preds: preds || {},
+    champion: championPredictionsCache[k] || "",
+    updatedAt: Date.now()
+  });
+  predictionsCache[k]=preds || {};
+}
 async function saveChampionForCurrentUser(champion){
   await setDoc(doc(db,"predictions",keyNick(currentUser.nick)), {nick:currentUser.nick, champion: champion || "", updatedAt:Date.now()}, {merge:true});
   championPredictionsCache[keyNick(currentUser.nick)] = champion || "";
@@ -548,7 +559,7 @@ window.saveChampionPick=async function(){
 function renderMatchList(){
   const list=document.getElementById("matchList");
   if(!list)return;
-  const preds=loadMyPredictions();
+  const preds={...loadMyPredictions()};
   list.innerHTML="";
   let lastDate="";
   sortedMatches().forEach(m=>{
@@ -578,8 +589,9 @@ window.clearMyPrediction=async function(matchId){
     showToast("Tego typu nie można już usunąć.");
     return;
   }
-  const preds=loadMyPredictions();
+  const preds={...loadMyPredictions()};
   delete preds[matchId];
+  predictionsCache[keyNick(currentUser.nick)] = preds;
   const hi=document.getElementById(`p_${matchId}_h`);
   const ai=document.getElementById(`p_${matchId}_a`);
   if(hi) hi.value="";
