@@ -146,6 +146,13 @@
     .bracket-col{min-width:82vw;scroll-snap-align:start}
     .bracket-match{border-radius:18px;padding:12px}
     .bracket-pred .btn{min-height:36px}
+    .live-pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-left:4px}
+    .live-before{background:#eef2f7;color:#52606d}
+    .live-on{background:#fee2e2;color:#991b1b}
+    .live-break{background:#fff7ed;color:#9a3412}
+    .live-end{background:#e7f7ee;color:#116149}
+    .live-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulseLive 1s infinite}
+    @keyframes pulseLive{0%,100%{opacity:.35}50%{opacity:1}}
     .pred-table{font-size:11px}
     .pred-table th,.pred-table td{padding:7px 3px}
     #viewLogin .hdr,#viewRegister .hdr{position:static;background:transparent;backdrop-filter:none}
@@ -258,7 +265,7 @@
       <div style="margin-top:8px;font-size:11px;color:var(--color-text-tertiary)">
         <span class="badge b3">5 pkt</span> mistrz świata &nbsp;
         <span class="badge b3">3 pkt</span> dokładny wynik &nbsp;
-        <span class="badge b1">1 pkt</span> dobry zwycięzca lub remis
+        <span class="badge b1">1 pkt</span> dobry zwycięzca/remis
       </div>
     </div>
 
@@ -290,6 +297,7 @@
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         <button class="btn primary" onclick="saveOfficial()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz wyniki</button>
+        <button class="btn" onclick="fetchAndSaveApiResults()"><i class="ti ti-cloud-download" aria-hidden="true"></i> Pobierz wyniki z API</button>
         <button class="btn" onclick="showKnockoutForm()"><i class="ti ti-tournament" aria-hidden="true"></i> Dodaj mecz do drabinki</button>
       </div>
       <div id="knockoutFormCard" class="card" style="display:none;margin-top:12px">
@@ -350,6 +358,20 @@ const firebaseConfig = {
 };
 
 const ADMIN_NICK = "kapiadmin";
+
+const API_RESULTS_BASE = ""; // jeśli backend jest osobno, wpisz np. "https://twoj-backend.onrender.com"
+const API_TEAM_ALIASES = {
+  "Mexico":"Meksyk","South Africa":"RPA","Korea Republic":"Korea Płd.","South Korea":"Korea Płd.","Czech Republic":"Czechy",
+  "Canada":"Kanada","Bosnia and Herzegovina":"Bośnia i Herc.","Qatar":"Katar","Switzerland":"Szwajcaria","Brazil":"Brazylia",
+  "Morocco":"Maroko","Haiti":"Haiti","Scotland":"Szkocja","United States":"USA","USA":"USA","Paraguay":"Paragwaj","Australia":"Australia",
+  "Türkiye":"Turcja","Turkey":"Turcja","Germany":"Niemcy","Curacao":"Curaçao","Curaçao":"Curaçao","Ivory Coast":"Wybrzeże Kości Słoniowej",
+  "Ecuador":"Ekwador","Netherlands":"Holandia","Japan":"Japonia","Sweden":"Szwecja","Tunisia":"Tunezja","Belgium":"Belgia","Egypt":"Egipt",
+  "Iran":"Iran","New Zealand":"Nowa Zelandia","Spain":"Hiszpania","Cape Verde":"Republika Zielonego Przylądka","Saudi Arabia":"Arabia Saudyjska",
+  "Uruguay":"Urugwaj","France":"Francja","Senegal":"Senegal","Iraq":"Irak","Norway":"Norwegia","Argentina":"Argentyna","Algeria":"Algieria",
+  "Austria":"Austria","Jordan":"Jordania","Portugal":"Portugalia","DR Congo":"DR Kongo","Congo DR":"DR Kongo","Uzbekistan":"Uzbekistan",
+  "Colombia":"Kolumbia","England":"Anglia","Croatia":"Chorwacja","Ghana":"Ghana","Panama":"Panama"
+};
+
 const COLORS = ["#185FA5","#0F6E56","#993C1D","#993556","#3B6D11","#854F0B","#534AB7","#A32D2D"];
 const BGS   = ["#E6F1FB","#E1F5EE","#FAECE7","#FBEAF0","#EAF3DE","#FAEEDA","#EEEDFE","#FCEBEB"];
 
@@ -461,6 +483,20 @@ function formatCountdown(ms){
   if(h>0) return `${h}h ${mi}m`;
   return `${mi}m`;
 }
+
+function matchLiveStatus(m){
+  const kick=matchKickoffMs(m);
+  if(!kick) return {cls:"live-before", text:"brak godz.", active:false};
+  const min=Math.floor((Date.now()-kick)/60000);
+  if(min < 0) return {cls:"live-before", text:"przed meczem", active:false};
+  if(min <= 120) return {cls:"live-on", text:"w trakcie", active:true};
+  return {cls:"live-end", text:"koniec", active:false};
+}
+function livePill(m){
+  const s=matchLiveStatus(m);
+  return `<span class="live-pill ${s.cls}">${s.active?`<span class="live-dot"></span>`:""}${s.text}</span>`;
+}
+
 function allTeamsSorted(){
   const set = new Set();
   allMatches().forEach(m=>{ if(m.h) set.add(m.h); if(m.a) set.add(m.a); });
@@ -470,6 +506,53 @@ function teamOptionsHtml(selected){
   const sel = selected || "";
   return `<option value="">— wybierz drużynę —</option>` + allTeamsSorted().map(t=>`<option value="${String(t).replace(/"/g,'&quot;')}" ${t===sel ? "selected" : ""}>${t}</option>`).join("");
 }
+
+function normalizeName(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"").trim(); }
+function apiTeamToLocal(name){ return API_TEAM_ALIASES[name] || name; }
+function teamKey(name){ return normalizeName(apiTeamToLocal(name)); }
+function findMatchByTeams(homeName, awayName){
+  const h=teamKey(homeName), a=teamKey(awayName);
+  return allMatches().find(m=>teamKey(m.h)===h && teamKey(m.a)===a) ||
+         allMatches().find(m=>teamKey(m.h)===a && teamKey(m.a)===h);
+}
+function isApiFinalStatus(shortStatus){
+  return ["FT","AET","PEN"].includes(String(shortStatus||"").toUpperCase());
+}
+async function fetchAndSaveApiResults(){
+  if(!isAdmin()){
+    showToast("Tylko admin może pobierać wyniki.");
+    return;
+  }
+  try{
+    showToast("Pobieram wyniki z API...");
+    const res=await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
+    if(!res.ok) throw new Error(`API ${res.status}`);
+    const data=await res.json();
+    const fixtures=Array.isArray(data.response) ? data.response : [];
+    let matched=0, saved=0;
+    fixtures.forEach(fx=>{
+      const home=apiTeamToLocal(fx?.teams?.home?.name || "");
+      const away=apiTeamToLocal(fx?.teams?.away?.name || "");
+      const gh=fx?.goals?.home;
+      const ga=fx?.goals?.away;
+      const short=fx?.fixture?.status?.short || "";
+      const match=findMatchByTeams(home, away);
+      if(!match)return;
+      matched++;
+      if(!isApiFinalStatus(short))return;
+      if(!Number.isInteger(gh) || !Number.isInteger(ga))return;
+      officialResults[match.id]={h:gh,a:ga};
+      saved++;
+    });
+    await saveMain();
+    showToast(`✅ API: dopasowano ${matched}, zapisano ${saved} wyników`, "success");
+    rerenderAll();
+  }catch(e){
+    console.error(e);
+    alert("Nie udało się pobrać wyników z API: " + (e.message || e));
+  }
+}
+
 function matchKickoffMs(m){
   if(m.kickoffUtc){
     const t = new Date(m.kickoffUtc).getTime();
@@ -658,11 +741,13 @@ function renderDashboard(){
   const progressBox=document.getElementById("progressBox");
   if(!nextBox || !progressBox || !currentUser)return;
   const now=Date.now();
-  const upcoming=sortedMatches().find(m=>{ const t=matchKickoffMs(m); return t && t>now && !officialResults[m.id]; });
+  const liveNow=sortedMatches().find(m=>{ const s=matchLiveStatus(m); return s.text!=="przed meczem" && s.text!=="koniec" && !officialResults[m.id]; });
+  const upcoming=liveNow || sortedMatches().find(m=>{ const t=matchKickoffMs(m); return t && t>now && !officialResults[m.id]; });
   if(upcoming){
     const kick=matchKickoffMs(upcoming);
     const lockAt=kick - 60*60*1000;
-    nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">Najbliższy mecz</div><div class="next-match-teams">${teamName(upcoming.h)} vs ${teamName(upcoming.a)}</div><div class="next-match-meta">${upcoming.date} · ${upcoming.time} · ${upcoming.g || ""}</div><div class="next-match-meta">Do blokady typowania: <b>${formatCountdown(lockAt-now)}</b></div></div>`;
+    const s=matchLiveStatus(upcoming);
+    nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">${liveNow ? "Mecz trwa" : "Najbliższy mecz"}</div><div class="next-match-teams">${teamName(upcoming.h)} vs ${teamName(upcoming.a)}</div><div class="next-match-meta">${upcoming.date} · ${upcoming.time} · ${upcoming.g || ""} · ${livePill(upcoming)}</div><div class="next-match-meta">${liveNow ? `Status: <b>${s.text}</b>` : `Do blokady typowania: <b>${formatCountdown(lockAt-now)}</b>`}</div></div>`;
   } else {
     nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">Najbliższy mecz</div><div class="next-match-teams">Brak nadchodzących meczów</div></div>`;
   }
@@ -745,7 +830,7 @@ function renderMatchList(){
     } else {
       mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"><button class="btn sm primary" type="button" onclick="saveSinglePrediction('${jsStr(m.id)}')" title="Zapisz ten typ" style="padding:4px 7px"><i class="ti ti-check"></i></button>${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}</div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany: ${p.h}:${p.a} · możesz zmienić</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">wpisz i kliknij ✓</div>`}</div>`;
     }
-    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${teamName(m.h)}</span>${mid}<span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
+    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} ${livePill(m)}</div>${teamName(m.h)}</span>${mid}<span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
     list.appendChild(row);
   });
   if(!anyMatch){
@@ -819,7 +904,24 @@ window.savePredictions=async function(){
 }
 
 function calcPts(pred,off){ if(!pred||!off||off.h===undefined || pred.h==="" || pred.a==="")return null; if(pred.h===off.h&&pred.a===off.a)return 3; const pr=pred.h>pred.a?1:pred.h<pred.a?-1:0; const or=off.h>off.a?1:off.h<off.a?-1:0; return pr===or?1:0; }
-function baseScoreForNick(nick){ const preds=getPredsForNick(nick); let pts=0,ex=0,win=0; allMatches().forEach(m=>{ const off=officialResults[m.id]; const pred=preds[m.id]; if(!off||!pred)return; const r=calcPts(pred,off); if(r===null)return; pts+=r; if(r===3)ex++; else if(r===1)win++; }); return {pts,ex,win}; }
+function baseScoreForNick(nick){
+  const preds=getPredsForNick(nick);
+  let pts=0,ex=0,win=0,close=0,played=0;
+  allMatches().forEach(m=>{
+    const off=officialResults[m.id];
+    if(!off)return;
+    const pred=preds[m.id];
+    if(!pred){ close += 10; played++; return; }
+    const r=calcPts(pred,off);
+    if(r===null)return;
+    pts+=r;
+    if(r===3)ex++;
+    else if(r===1)win++;
+    close += Math.abs((parseInt(pred.h)||0)-(parseInt(off.h)||0)) + Math.abs((parseInt(pred.a)||0)-(parseInt(off.a)||0));
+    played++;
+  });
+  return {pts,ex,win,close,played};
+}
 
 function renderResults(){
   const list=document.getElementById("resultsList");
@@ -850,7 +952,7 @@ function renderResults(){
     else if(pts===0&&off)badge=`<span style="font-size:11px;color:var(--color-text-tertiary)">0 pkt</span>`;
     const row=document.createElement("div");
     row.className="match-row";
-    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${teamName(m.h)}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
+    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} ${livePill(m)}</div>${teamName(m.h)}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
     card.appendChild(row);
   });
   if(any) list.appendChild(card);
@@ -905,7 +1007,7 @@ function renderBracket(){
           ${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}
         </div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary);text-align:center;margin-top:4px">zapisany typ: ${p.h}:${p.a} · możesz zmienić albo usunąć</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary);text-align:center;margin-top:4px">wpisz typ i kliknij zapisz</div>`}`;
       }
-      box.innerHTML=`<div class="bracket-meta">${m.date || "?"} ${m.time || ""}${isAdmin()?` <button type="button" class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" title="Usuń mecz" style="float:right;padding:3px 6px"><i class="ti ti-trash"></i></button>`:""}</div>
+      box.innerHTML=`<div class="bracket-meta">${m.date || "?"} ${m.time || ""} ${livePill(m)}${isAdmin()?` <button type="button" class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" title="Usuń mecz" style="float:right;padding:3px 6px"><i class="ti ti-trash"></i></button>`:""}</div>
         <div class="bracket-team"><span>${teamName(m.h)}</span></div>
         <div style="display:flex;justify-content:center;margin:4px 0">${mid}</div>
         <div class="bracket-team"><span>${teamName(m.a)}</span></div>`;
@@ -985,22 +1087,15 @@ function renderLeaderboard(){
     const base=baseScoreForNick(nick);
     const manual=getManualPoints(nick);
     const champ=championScoreForNick(nick);
-    scores.push({nick,pts:base.pts+manual+champ,ex:base.ex,win:base.win,manual,base:base.pts,champ});
+    scores.push({nick,pts:base.pts+manual+champ,ex:base.ex,win:base.win,manual,base:base.pts,champ,close:base.close,played:base.played});
   }
 
-  // Kolejność przy remisie:
-  // 1) więcej punktów łącznie
-  // 2) więcej dokładnych wyników 3-punktowych
-  // 3) więcej trafień za 1 punkt
-  // 4) punkty za mistrza
-  // 5) korekta admina
-  // 6) nick alfabetycznie
   scores.sort((a,b)=>
     b.pts-a.pts ||
+    b.champ-a.champ ||
     b.ex-a.ex ||
     b.win-a.win ||
-    b.champ-a.champ ||
-    b.manual-a.manual ||
+    a.close-b.close ||
     a.nick.localeCompare(b.nick,"pl")
   );
 
@@ -1017,7 +1112,7 @@ function renderLeaderboard(){
     const places=["2. miejsce","1. miejsce","3. miejsce"];
     const podium=document.createElement("div");
     podium.className="podium";
-    podium.innerHTML=top.map((s,i)=>`<div class="podium-card ${cls[i]}"><div class="podium-medal">${medals[i]}</div><div class="podium-name">${s.nick}</div><div class="podium-points">${s.pts}</div><div class="podium-sub">${places[i]} · ${s.ex}× dokładny</div></div>`).join("");
+    podium.innerHTML=top.map((s,i)=>`<div class="podium-card ${cls[i]}"><div class="podium-medal">${medals[i]}</div><div class="podium-name">${s.nick}</div><div class="podium-points">${s.pts}</div><div class="podium-sub">${places[i]} · ${s.ex}× dokładny${s.champ?` · mistrz +${s.champ}`:""}</div></div>`).join("");
     list.appendChild(podium);
   } else if(scores.length===2){
     const podium=document.createElement("div");
@@ -1040,13 +1135,13 @@ function renderLeaderboard(){
     const row=document.createElement("div");
     row.className="ldr-row";
     const avatarIdx=Math.abs(parseInt(simpleHash(keyNick(s.nick)),16))%COLORS.length;
-    row.innerHTML=`<div style="width:22px;font-size:13px;color:var(--color-text-tertiary)">${place}.</div><div class="avatar" style="width:30px;height:30px;font-size:11px;background:${BGS[avatarIdx]};color:${COLORS[avatarIdx]}">${s.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${s.nick}</div><div style="text-align:right"><div style="font-size:15px;font-weight:500;color:#185FA5">${s.pts} pkt</div><div style="font-size:10px;color:var(--color-text-tertiary)"><span style="color:#27500A">${s.ex}×3</span> · <span style="color:#0C447C">${s.win}×1</span>${s.champ ? ` · mistrz: +${s.champ}` : ""}${s.manual ? ` · korekta: ${s.manual > 0 ? "+" : ""}${s.manual}` : ""}</div></div>`;
+    row.innerHTML=`<div style="width:22px;font-size:13px;color:var(--color-text-tertiary)">${place}.</div><div class="avatar" style="width:30px;height:30px;font-size:11px;background:${BGS[avatarIdx]};color:${COLORS[avatarIdx]}">${s.nick.slice(0,2).toUpperCase()}</div><div style="flex:1;font-size:13px;font-weight:500">${s.nick}</div><div style="text-align:right"><div style="font-size:15px;font-weight:500;color:#185FA5">${s.pts} pkt</div><div style="font-size:10px;color:var(--color-text-tertiary)"><span style="color:#27500A">${s.ex}×3</span> · <span style="color:#0C447C">${s.win}×1</span>${s.champ ? ` · mistrz: +${s.champ}` : ""}${s.manual ? ` · korekta: ${s.manual > 0 ? "+" : ""}${s.manual}` : ""} · bliskość: ${s.close}</div></div>`;
     list.appendChild(row);
   });
 
   const note=document.createElement("div");
   note.style.cssText="margin-top:10px;font-size:10px;color:var(--color-text-tertiary);line-height:1.4";
-  note.innerHTML="Przy tej samej liczbie punktów wyżej jest gracz z większą liczbą dokładnych wyników, potem z większą liczbą trafień za 1 pkt.";
+  note.innerHTML="Przy tej samej liczbie punktów wyżej jest: trafiony mistrz, więcej dokładnych wyników, więcej trafień za 1 pkt, a potem niższa suma różnic bramek.";
   list.appendChild(note);
 }
 
@@ -1091,7 +1186,7 @@ function renderAdminMatches(){
     const row=document.createElement("div");
     row.className="match-row";
     row.innerHTML=`<button type="button" class="btn sm danger" onclick="deleteMatch('${jsStr(m.id)}')" style="padding:4px 6px;margin-right:4px" title="Usuń mecz"><i class="ti ti-trash"></i> Usuń</button>
-      <span class="team" style="font-size:12px"><div class="match-date">${m.time || ""}</div>${teamName(m.h)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>
+      <span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} ${livePill(m)}</div>${teamName(m.h)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>
       <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center">
         <input class="sc" type="number" min="0" max="20" id="o_${m.id}_h" value="${off.h}" placeholder="–">
         <span class="sep">:</span>
@@ -1334,6 +1429,7 @@ window.saveKnockoutForm=async function(){
 window.fetchLive=async function(){ showToast("Ta funkcja została wyłączona."); }
 document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
+setInterval(()=>{ if(currentUser) rerenderAll(); }, 60000);
 initFirebase();
 </script>
 </body>
