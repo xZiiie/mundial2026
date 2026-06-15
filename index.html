@@ -159,6 +159,58 @@
     .live-end{background:#e7f7ee;color:#116149}
     .live-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulseLive 1s infinite}
     @keyframes pulseLive{0%,100%{opacity:.35}50%{opacity:1}}
+
+    .live-match-highlight{
+      position:relative;
+      border:2px solid #dc2626!important;
+      background:linear-gradient(135deg,#fff1f2,#ffffff)!important;
+      box-shadow:0 0 0 4px rgba(220,38,38,.13),0 14px 30px rgba(153,27,27,.16)!important;
+      overflow:visible;
+    }
+    .live-match-highlight::before{
+      content:attr(data-live-label);
+      position:absolute;
+      top:-13px;
+      left:14px;
+      background:#dc2626;
+      color:#fff;
+      border-radius:999px;
+      padding:4px 10px;
+      font-size:10px;
+      line-height:1;
+      font-weight:900;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      box-shadow:0 8px 18px rgba(220,38,38,.28);
+      z-index:2;
+    }
+    .live-match-highlight::after{
+      content:"";
+      position:absolute;
+      top:-6px;
+      left:22px;
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background:#fff;
+      z-index:3;
+      animation:pulseLive 1s infinite;
+    }
+    .live-inline-status{
+      display:inline-flex;
+      align-items:center;
+      background:#fee2e2;
+      color:#991b1b;
+      border:1px solid #fecaca;
+      border-radius:999px;
+      padding:4px 8px;
+      font-size:10px;
+      font-weight:900;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      margin-left:6px;
+    }
+
     .pred-table{font-size:11px}
     .pred-table th,.pred-table td{padding:7px 3px}
     #viewLogin .hdr,#viewRegister .hdr{position:static;background:transparent;backdrop-filter:none}
@@ -1440,6 +1492,52 @@ function betterLiveBadge(m){
   if(!isLiveByClockOrApi(m)) return "";
   const minute=liveMinuteForMatch(m);
   return `<span class="live-big-badge"><span class="live-big-dot"></span>LIVE${minute ? " · " + minute : ""}</span>`;
+}
+
+
+function liveMinuteTextForDisplay(m){
+  try{
+    if(typeof getApiMatchForLocal==="function" && typeof apiMinuteText==="function"){
+      const api=getApiMatchForLocal(m);
+      const min=apiMinuteText(api,m);
+      if(min) return min;
+    }
+  }catch(e){}
+  const kick=matchKickoffMs(m);
+  if(!kick) return "";
+  const diff=Math.floor((Date.now()-kick)/60000);
+  if(diff < 0) return "";
+  if(diff <= 45) return `${Math.max(1,diff+1)}’`;
+  if(diff <= 60) return "45+";
+  if(diff <= 105) return `${Math.min(90,diff-14)}’`;
+  if(diff <= 130) return "90+";
+  return "";
+}
+
+function isMatchLiveForDisplay(m){
+  if(officialResults[m.id]) return false;
+  try{
+    if(typeof getApiMatchForLocal==="function"){
+      const api=getApiMatchForLocal(m);
+      const st=String(api?.status || "").toUpperCase();
+      if(st==="IN_PLAY" || st==="PAUSED" || st==="LIVE") return true;
+      if(st==="FINISHED") return false;
+    }
+  }catch(e){}
+  const kick=matchKickoffMs(m);
+  if(!kick) return false;
+  const now=Date.now();
+  return now>=kick && now<=kick+120*60*1000;
+}
+
+function liveLabelForMatch(m){
+  const min=liveMinuteTextForDisplay(m);
+  return min ? `LIVE ${min}` : "LIVE";
+}
+
+function liveInlineForMatch(m){
+  if(!isMatchLiveForDisplay(m)) return "";
+  return `<span class="live-inline-status">${liveLabelForMatch(m)}</span>`;
 }
 
 function renderAdminEditPrediction(){
