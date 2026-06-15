@@ -147,6 +147,11 @@
     .bracket-match{border-radius:18px;padding:12px}
     .bracket-pred .btn{min-height:36px}
     .live-pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-left:4px}
+    .live-card-active{border:2px solid #ef4444!important;background:linear-gradient(135deg,#fff7f7,#fff)!important;box-shadow:0 0 0 4px rgba(239,68,68,.12),0 12px 28px rgba(153,27,27,.14)!important}
+    .live-big-badge{display:inline-flex;align-items:center;gap:6px;background:#991b1b;color:#fff;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+    .live-big-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulseLive 1s infinite}
+    .live-score-box{font-size:15px;font-weight:900;color:#991b1b;line-height:1.1}
+    .live-score-sub{font-size:10px;color:#991b1b;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
     .live-score-box{font-size:13px;font-weight:800;color:#991b1b;line-height:1.15}.live-score-sub{font-size:9px;color:#991b1b;font-weight:800;text-transform:uppercase}
     .live-before{background:#eef2f7;color:#52606d}
     .live-on{background:#fee2e2;color:#991b1b}
@@ -188,7 +193,8 @@
       <input class="inp" type="text" id="loginName" placeholder="Twoje imię / nick" autocomplete="username">
       <input class="inp" type="password" id="loginPass" placeholder="Hasło" autocomplete="current-password">
       <div class="err" id="loginErr"></div>
-      <button class="btn primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doLogin()" id="loginBtn">
+      <div id="debugBox" style="font-size:11px;color:#A32D2D;margin-top:6px;white-space:pre-wrap"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:4px" id="loginBtn">
         <i class="ti ti-login" aria-hidden="true"></i> Zaloguj się
       </button>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--color-text-tertiary)">
@@ -205,7 +211,7 @@
       <input class="inp" type="password" id="regPass" placeholder="Hasło" autocomplete="new-password">
       <input class="inp" type="password" id="regPass2" placeholder="Powtórz hasło" autocomplete="new-password">
       <div class="err" id="regErr"></div>
-      <button class="btn primary" style="width:100%;justify-content:center;margin-top:4px" onclick="doRegister()" id="regBtn">
+      <button class="btn primary" style="width:100%;justify-content:center;margin-top:4px" id="regBtn">
         <i class="ti ti-user-plus" aria-hidden="true"></i> Utwórz konto
       </button>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--color-text-tertiary)">
@@ -329,6 +335,11 @@
         <div id="adminKnockoutDeleteList"></div>
       </div>
       <div style="margin-top:20px" class="card">
+        <span class="label">Admin — zmiana typu gracza po blokadzie</span>
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px">Wybierz gracza i mecz. Admin może zapisać albo usunąć typ nawet po blokadzie.</div>
+        <div id="adminEditPredictionBox"></div>
+      </div>
+      <div style="margin-top:20px" class="card">
         <span class="label">Gracze — ręczna korekta punktów</span>
         <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px">Wpisz dodatnią lub ujemną liczbę, np. 5 albo -2. Korekta dolicza się do punktów z typów.</div>
         <div id="adminPlayerList"></div>
@@ -343,6 +354,14 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+function showStartupError(msg){
+  const box=document.getElementById("debugBox") || document.getElementById("loginErr");
+  if(box) box.textContent=String(msg || "");
+}
+window.addEventListener("error", e=>showStartupError("Błąd JS: " + (e.message || e.error || e)));
+window.addEventListener("unhandledrejection", e=>showStartupError("Błąd: " + (e.reason?.message || e.reason || e)));
+
 
 // ============================================================
 // 1) TU WKLEJ SWOJĄ KONFIGURACJĘ Z FIREBASE
@@ -917,7 +936,7 @@ function getManualPoints(nick){ return parseInt(pointAdjustments[keyNick(nick)] 
 
 window.showRegView=function(){ document.getElementById("viewLogin").style.display="none"; document.getElementById("viewRegister").style.display="block"; document.getElementById("viewMain").style.display="none"; document.getElementById("regErr").textContent=""; }
 window.showLoginView=function(){ document.getElementById("viewLogin").style.display="block"; document.getElementById("viewRegister").style.display="none"; document.getElementById("viewMain").style.display="none"; document.getElementById("loginErr").textContent=""; document.getElementById("loginPass").value=""; }
-window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin') renderAdminList(); if(id==='tTypyGraczy') renderAllPredictions(); if(id==='tDrabinka') renderBracket(); }
+window.switchTab=function(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active")); document.getElementById("tab_"+id)?.classList.add("active"); if(id==='tAdmin') document.getElementById("adminTab").classList.add("active"); document.querySelectorAll(".section").forEach(s=>s.classList.toggle("active",s.id===id)); if(id==='tAdmin'){ renderAdminList(); renderAdminEditPrediction(); } if(id==='tTypyGraczy') renderAllPredictions(); if(id==='tDrabinka') renderBracket(); }
 window.doLogout=function(){ currentUser=null; localStorage.removeItem("currentUser"); if(unsubMain) unsubMain(); showLoginView(); switchTab("tTyp"); }
 
 window.doRegister=async function(){
@@ -962,7 +981,7 @@ async function enterApp(){
   refreshApiMatchesCache();
 }
 
-function rerenderAll(){ if(!currentUser)return; renderDashboard(); renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); renderBracket(); renderAllPredictions(); if(isAdmin()) renderAdminList(); }
+function rerenderAll(){ if(!currentUser)return; renderDashboard(); renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); renderBracket(); renderAllPredictions(); if(isAdmin()){ renderAdminList(); renderAdminEditPrediction(); } }
 
 
 function renderDashboard(){
@@ -976,7 +995,7 @@ function renderDashboard(){
     const kick=matchKickoffMs(upcoming);
     const lockAt=kick - 60*60*1000;
     const s=matchLiveStatus(upcoming);
-    nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">${liveNow ? "Mecz trwa" : "Najbliższy mecz"}</div><div class="next-match-teams">${teamName(upcoming.h)} vs ${teamName(upcoming.a)}</div><div class="next-match-meta">${upcoming.date} · ${upcoming.time} · ${upcoming.g || ""} · ${livePill(upcoming)}</div><div class="next-match-meta">${liveNow ? `Status: <b>${s.text}</b>` : `Do blokady typowania: <b>${formatCountdown(lockAt-now)}</b>`}</div></div>`;
+    nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">${liveNow ? "Mecz trwa" : "Najbliższy mecz"}</div><div class="next-match-teams">${teamName(upcoming.h)} vs ${teamName(upcoming.a)}</div><div class="next-match-meta">${upcoming.date} · ${upcoming.time} · ${upcoming.g || ""} · ${betterLiveBadge(upcoming) || livePill(upcoming)}</div><div class="next-match-meta">${liveNow ? `Status: <b>${s.text}</b>` : `Do blokady typowania: <b>${formatCountdown(lockAt-now)}</b>`}</div></div>`;
   } else {
     nextBox.innerHTML=`<div class="next-match-card"><div class="next-match-label">Najbliższy mecz</div><div class="next-match-teams">Brak nadchodzących meczów</div></div>`;
   }
@@ -1377,6 +1396,146 @@ function renderLeaderboard(){
   list.appendChild(note);
 }
 
+
+function activeMinuteByClock(m){
+  const kick=matchKickoffMs(m);
+  if(!kick)return "";
+  const diff=Math.floor((Date.now()-kick)/60000);
+  if(diff < 0) return "";
+  if(diff <= 45) return `${Math.max(1,diff+1)}’`;
+  if(diff <= 60) return "45+";
+  if(diff <= 105) return `${Math.min(90,diff-14)}’`;
+  if(diff <= 130) return "90+";
+  return "";
+}
+
+function isLiveByClockOrApi(m){
+  if(officialResults[m.id]) return false;
+  try{
+    if(typeof getApiMatchForLocal==="function"){
+      const api=getApiMatchForLocal(m);
+      const st=String(api?.status || "").toUpperCase();
+      if(st==="IN_PLAY" || st==="PAUSED" || st==="LIVE") return true;
+      if(st==="FINISHED") return false;
+    }
+  }catch(e){}
+  const kick=matchKickoffMs(m);
+  if(!kick)return false;
+  const now=Date.now();
+  return now>=kick && now<=kick+120*60*1000;
+}
+
+function liveMinuteForMatch(m){
+  try{
+    if(typeof getApiMatchForLocal==="function" && typeof apiMinuteText==="function"){
+      const api=getApiMatchForLocal(m);
+      const min=apiMinuteText(api,m);
+      if(min)return min;
+    }
+  }catch(e){}
+  return activeMinuteByClock(m);
+}
+
+function betterLiveBadge(m){
+  if(!isLiveByClockOrApi(m)) return "";
+  const minute=liveMinuteForMatch(m);
+  return `<span class="live-big-badge"><span class="live-big-dot"></span>LIVE${minute ? " · " + minute : ""}</span>`;
+}
+
+function renderAdminEditPrediction(){
+  const box=document.getElementById("adminEditPredictionBox");
+  if(!box || !isAdmin())return;
+
+  const players=usersCache
+    .filter(u=>u && u.nick && keyNick(u.nick)!==ADMIN_NICK)
+    .map(u=>u.nick)
+    .sort((a,b)=>a.localeCompare(b,"pl"));
+
+  const matches=sortedMatches();
+
+  box.innerHTML=`
+    <select class="inp" id="adminEditPlayer">
+      <option value="">— wybierz gracza —</option>
+      ${players.map(n=>`<option value="${String(n).replace(/"/g,'&quot;')}">${n}</option>`).join("")}
+    </select>
+    <select class="inp" id="adminEditMatch">
+      <option value="">— wybierz mecz —</option>
+      ${matches.map(m=>`<option value="${m.id}">${m.date||""} ${m.time||""} · ${m.h} — ${m.a}</option>`).join("")}
+    </select>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input class="inp" id="adminEditH" type="number" min="0" max="30" placeholder="Gole 1" style="width:100px;margin-bottom:0">
+      <span>:</span>
+      <input class="inp" id="adminEditA" type="number" min="0" max="30" placeholder="Gole 2" style="width:100px;margin-bottom:0">
+      <button class="btn primary" type="button" id="adminEditSaveBtn"><i class="ti ti-device-floppy"></i> Zapisz typ</button>
+      <button class="btn danger" type="button" id="adminEditDeleteBtn"><i class="ti ti-trash"></i> Usuń typ</button>
+    </div>
+    <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:8px">Zmiana działa też po blokadzie meczu.</div>
+  `;
+
+  const fill=()=>{
+    const nick=document.getElementById("adminEditPlayer").value;
+    const mid=document.getElementById("adminEditMatch").value;
+    const pred=nick && mid ? (getPredsForNick(nick)[mid] || null) : null;
+    document.getElementById("adminEditH").value=pred ? pred.h : "";
+    document.getElementById("adminEditA").value=pred ? pred.a : "";
+  };
+
+  document.getElementById("adminEditPlayer").addEventListener("change",fill);
+  document.getElementById("adminEditMatch").addEventListener("change",fill);
+  document.getElementById("adminEditSaveBtn").addEventListener("click",adminSavePlayerPrediction);
+  document.getElementById("adminEditDeleteBtn").addEventListener("click",adminDeletePlayerPrediction);
+}
+
+window.adminSavePlayerPrediction=async function(){
+  if(!isAdmin())return;
+  const nick=document.getElementById("adminEditPlayer")?.value || "";
+  const mid=document.getElementById("adminEditMatch")?.value || "";
+  const h=document.getElementById("adminEditH")?.value;
+  const a=document.getElementById("adminEditA")?.value;
+
+  if(!nick || !mid){ alert("Wybierz gracza i mecz."); return; }
+  if(h==="" || a===""){ alert("Wpisz oba wyniki typu."); return; }
+
+  const k=keyNick(nick);
+  const preds={...(predictionsCache[k] || {})};
+  preds[mid]={h:Number(h),a:Number(a)};
+
+  await setDoc(doc(db,"predictions",k),{
+    nick:nick,
+    preds:preds,
+    champion:championPredictionsCache[k] || "",
+    updatedAt:Date.now(),
+    editedByAdmin:true
+  });
+
+  predictionsCache[k]=preds;
+  showToast("✅ Typ gracza zapisany przez admina", "success");
+  rerenderAll();
+};
+
+window.adminDeletePlayerPrediction=async function(){
+  if(!isAdmin())return;
+  const nick=document.getElementById("adminEditPlayer")?.value || "";
+  const mid=document.getElementById("adminEditMatch")?.value || "";
+  if(!nick || !mid){ alert("Wybierz gracza i mecz."); return; }
+
+  const k=keyNick(nick);
+  const preds={...(predictionsCache[k] || {})};
+  delete preds[mid];
+
+  await setDoc(doc(db,"predictions",k),{
+    nick:nick,
+    preds:preds,
+    champion:championPredictionsCache[k] || "",
+    updatedAt:Date.now(),
+    editedByAdmin:true
+  });
+
+  predictionsCache[k]=preds;
+  showToast("🗑️ Typ gracza usunięty przez admina", "success");
+  rerenderAll();
+};
+
 function renderAdminList(){
   try{ renderAdminChampion(); }catch(e){ console.error("renderAdminChampion", e); const box=document.getElementById("adminChampionBox"); if(box) box.innerHTML='<div style="font-size:12px;color:#A32D2D">Błąd ładowania mistrza: '+e.message+'</div>'; }
   try{ renderAdminMatches(); }catch(e){ console.error("renderAdminMatches", e); const box=document.getElementById("adminMatchList"); if(box) box.innerHTML='<div style="font-size:12px;color:#A32D2D">Błąd ładowania meczów: '+e.message+'</div>'; }
@@ -1663,7 +1822,76 @@ document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
 setInterval(()=>{ if(currentUser) rerenderAll(); }, 60000);
 setInterval(()=>{ if(currentUser) autoUpdateResultsFromApi(false); }, 30000);
-initFirebase();
+
+function bindLoginButtons(){
+  try{
+    const loginBtn=document.getElementById("loginBtn");
+    if(loginBtn && !loginBtn.dataset.boundLogin){
+      loginBtn.dataset.boundLogin="1";
+      loginBtn.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        if(typeof window.doLogin === "function") await window.doLogin();
+        else showStartupError("Nie znaleziono funkcji doLogin.");
+      });
+    }
+
+    const regBtn=document.getElementById("regBtn");
+    if(regBtn && !regBtn.dataset.boundReg){
+      regBtn.dataset.boundReg="1";
+      regBtn.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        if(typeof window.doRegister === "function") await window.doRegister();
+        else showStartupError("Nie znaleziono funkcji doRegister.");
+      });
+    }
+
+    const loginPass=document.getElementById("loginPass");
+    if(loginPass && !loginPass.dataset.boundEnter){
+      loginPass.dataset.boundEnter="1";
+      loginPass.addEventListener("keydown", async e=>{
+        if(e.key==="Enter" && typeof window.doLogin==="function"){
+          e.preventDefault();
+          await window.doLogin();
+        }
+      });
+    }
+  }catch(e){
+    showStartupError("Błąd podpinania logowania: " + (e.message || e));
+  }
+}
+
+function exposeClickFunctions(){
+  const names = [
+    "showRegView","showLoginView","switchTab","doLogout","doRegister","doLogin",
+    "savePredictions","saveSinglePrediction","clearMyPrediction","saveChampionPick",
+    "saveOfficial","saveOfficialMatch","clearOfficialMatch","saveOfficialChampion",
+    "clearOfficialChampion","showKnockoutForm","hideKnockoutForm","saveKnockoutForm",
+    "deleteKnockoutMatchDirect","deleteMatch","deletePlayer","savePlayerAdjustment",
+    "fetchAndSaveApiResults","adminSavePlayerPrediction","adminDeletePlayerPrediction",
+    "jumpToMainMatch"
+  ];
+  names.forEach(n=>{
+    try{
+      if(typeof eval(n)==="function") window[n]=eval(n);
+    }catch(e){}
+  });
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
+  exposeClickFunctions();
+  bindLoginButtons();
+});
+setTimeout(()=>{ exposeClickFunctions(); bindLoginButtons(); }, 300);
+setTimeout(()=>{ exposeClickFunctions(); bindLoginButtons(); }, 1200);
+
+exposeClickFunctions();
+bindLoginButtons();
+initFirebase().catch(e=>{
+  showStartupError("Błąd startu aplikacji: " + (e.message || e));
+  console.error(e);
+});
+
+console.log("Typer start OK");
 </script>
 </body>
 </html>
