@@ -147,6 +147,7 @@
     .bracket-match{border-radius:18px;padding:12px}
     .bracket-pred .btn{min-height:36px}
     .live-pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-left:4px}
+    .live-score-box{font-size:13px;font-weight:800;color:#991b1b;line-height:1.15}.live-score-sub{font-size:9px;color:#991b1b;font-weight:800;text-transform:uppercase}
     .live-before{background:#eef2f7;color:#52606d}
     .live-on{background:#fee2e2;color:#991b1b}
     .live-break{background:#fff7ed;color:#9a3412}
@@ -298,6 +299,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         <button class="btn primary" onclick="saveOfficial()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz wyniki</button>
         <button class="btn" onclick="fetchAndSaveApiResults()"><i class="ti ti-cloud-download" aria-hidden="true"></i> Pobierz wyniki z API</button>
+        <button class="btn" onclick="testApiLiveStatus()"><i class="ti ti-bug" aria-hidden="true"></i> Test API live</button>
         <button class="btn" onclick="showKnockoutForm()"><i class="ti ti-tournament" aria-hidden="true"></i> Dodaj mecz do drabinki</button>
       </div>
       <div id="knockoutFormCard" class="card" style="display:none;margin-top:12px">
@@ -507,15 +509,68 @@ function getApiMatchForLocal(m){
   }) || null;
 }
 
+function apiStatusUpper(api){
+  return String(api?.status || "").toUpperCase();
+}
+
+function apiStatusIsLive(api){
+  const status = apiStatusUpper(api);
+  // football-data.org najczęściej używa IN_PLAY i PAUSED.
+  return status === "IN_PLAY" || status === "PAUSED" || status === "LIVE";
+}
+
+function apiStatusIsFinished(api){
+  return apiStatusUpper(api) === "FINISHED";
+}
+
+function apiScoreForMatch(api){
+  const full = api?.score?.fullTime || {};
+  const half = api?.score?.halfTime || {};
+  let h = full.home;
+  let a = full.away;
+
+  // W trakcie meczu football-data może czasem trzymać aktualny wynik w fullTime,
+  // a czasem jeszcze tylko w halfTime.
+  if((h === null || h === undefined) && half.home !== null && half.home !== undefined) h = half.home;
+  if((a === null || a === undefined) && half.away !== null && half.away !== undefined) a = half.away;
+
+  if(h === null || h === undefined || a === null || a === undefined) return null;
+  return {h:Number(h), a:Number(a)};
+}
+
+function apiMinuteText(api, localMatch=null){
+  // football-data.org zwykle NIE zwraca dokładnej minuty.
+  // Jeśli kiedyś zwróci minute/elapsed, pokażemy ją.
+  const direct = api?.minute ?? api?.elapsed ?? api?.matchMinute ?? api?.currentMinute;
+  if(direct !== null && direct !== undefined && direct !== "") return `${direct}’`;
+
+  const status = apiStatusUpper(api);
+  if(status === "PAUSED") return "przerwa";
+
+  // Fallback: jeżeli API mówi, że mecz trwa, ale nie daje minuty,
+  // pokazujemy orientacyjną minutę z godziny rozpoczęcia.
+  if(apiStatusIsLive(api) && localMatch){
+    const kick = matchKickoffMs(localMatch);
+    if(kick){
+      const min = Math.max(1, Math.floor((Date.now()-kick)/60000)+1);
+      if(min <= 45) return `${min}’`;
+      if(min <= 60) return "45+";
+      if(min <= 105) return `${Math.min(90, min-15)}’`;
+      if(min <= 130) return "90+";
+    }
+  }
+
+  if(apiStatusIsLive(api)) return "LIVE";
+  return "";
+}
+
 function apiLiveScoreHtml(m){
   const api = getApiMatchForLocal(m);
-  if(!api) return "";
-  const status = String(api.status || "").toUpperCase();
-  if(status !== "IN_PLAY" && status !== "PAUSED" && status !== "LIVE") return "";
-  const gh = api?.score?.fullTime?.home ?? api?.score?.halfTime?.home;
-  const ga = api?.score?.fullTime?.away ?? api?.score?.halfTime?.away;
-  if(gh === null || gh === undefined || ga === null || ga === undefined) return "";
-  return `<div style="font-size:13px;font-weight:700;color:#991b1b">${gh}:${ga}</div><div style="font-size:9px;color:#991b1b;font-weight:700;text-transform:uppercase">w trakcie</div>`;
+  if(!api || !apiStatusIsLive(api)) return "";
+  const sc = apiScoreForMatch(api);
+  const minute = apiMinuteText(api, m);
+  if(!sc) return `<div class="live-score-box">LIVE</div><div class="live-score-sub">${minute || "w trakcie"}</div>`;
+  return `<div class="live-score-box">${sc.h}:${sc.a}</div><div class="live-score-sub">${minute || "w trakcie"}</div>`;
 }
 
 function matchLiveStatus(m){
@@ -523,9 +578,10 @@ function matchLiveStatus(m){
 
   const api = getApiMatchForLocal(m);
   if(api){
-    const status = String(api.status || "").toUpperCase();
+    const status = apiStatusUpper(api);
+    const minute = apiMinuteText(api, m);
     if(status === "FINISHED") return {cls:"live-end", text:"koniec", active:false};
-    if(status === "IN_PLAY" || status === "PAUSED" || status === "LIVE") return {cls:"live-on", text:"w trakcie", active:true};
+    if(apiStatusIsLive(api)) return {cls:"live-on", text: minute ? `w trakcie ${minute}` : "w trakcie", active:true};
     if(status === "TIMED" || status === "SCHEDULED") return {cls:"live-before", text:"przed meczem", active:false};
   }
 
@@ -562,7 +618,43 @@ function findMatchByTeams(homeName, awayName){
 function isApiFinalStatus(shortStatus){
   return ["FT","AET","PEN"].includes(String(shortStatus||"").toUpperCase());
 }
-async function fetchAndSaveApiResults(){
+window.testApiLiveStatus=async function(){
+  try{
+    const res = await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
+    const data = await res.json();
+    const matches = Array.isArray(data.matches) ? data.matches : [];
+    apiMatchesCache = matches;
+
+    const counts = {};
+    matches.forEach(m=>{
+      const s = String(m.status || "BRAK").toUpperCase();
+      counts[s] = (counts[s] || 0) + 1;
+    });
+
+    const live = matches.filter(m=>apiStatusIsLive(m));
+    const examples = matches.slice(0,8).map(m=>{
+      const home=m.homeTeam?.name || "?";
+      const away=m.awayTeam?.name || "?";
+      const sc=apiScoreForMatch(m);
+      return `${m.status}: ${home} - ${away}${sc ? ` (${sc.h}:${sc.a})` : ""}`;
+    }).join("\n");
+
+    alert(
+      `Test API football-data.org\n\n` +
+      `Meczów: ${matches.length}\n` +
+      `Statusy: ${JSON.stringify(counts, null, 2)}\n` +
+      `Live teraz: ${live.length}\n\n` +
+      `Przykłady:\n${examples || "brak"}\n\n` +
+      `Jeśli Live teraz = 0, to API nie zwraca aktualnie żadnego meczu jako IN_PLAY/PAUSED.`
+    );
+
+    rerenderAll();
+  }catch(e){
+    alert("Błąd testu API live: " + (e.message || e));
+  }
+};
+
+window.fetchAndSaveApiResults=async function(){
   if(!isAdmin()){
     showToast("Tylko admin może pobierać wyniki.");
     return;
@@ -593,14 +685,14 @@ async function fetchAndSaveApiResults(){
     apiMatchesCache = fixtures;
 
     if(!fixtures.length){
-      alert("API działa, ale nie zwróciło żadnych meczów. Sprawdź endpoint /api/worldcup-2026 na Render.");
+      alert("API działa, ale nie zwróciło żadnych meczów.");
       return;
     }
 
     let matched = 0;
     let saved = 0;
     let finished = 0;
-    let noScore = 0;
+    let live = 0;
     const unmatched = [];
 
     fixtures.forEach(matchApi=>{
@@ -618,22 +710,21 @@ async function fetchAndSaveApiResults(){
 
       matched++;
 
-      const status = String(matchApi?.status || "").toUpperCase();
-      if(status !== "FINISHED") return;
-
-      finished++;
-
-      const gh = matchApi?.score?.fullTime?.home;
-      const ga = matchApi?.score?.fullTime?.away;
-
-      if(gh === null || gh === undefined || ga === null || ga === undefined){
-        noScore++;
+      if(apiStatusIsLive(matchApi)){
+        live++;
         return;
       }
 
+      if(!apiStatusIsFinished(matchApi)) return;
+
+      finished++;
+
+      const sc = apiScoreForMatch(matchApi);
+      if(!sc) return;
+
       officialResults[localMatch.id] = {
-        h: Number(gh),
-        a: Number(ga)
+        h: sc.h,
+        a: sc.a
       };
 
       saved++;
@@ -646,24 +737,24 @@ async function fetchAndSaveApiResults(){
 
     rerenderAll();
 
-    const info =
+    alert(
       `API football-data.org\n\n` +
       `Pobrano meczów: ${fixtures.length}\n` +
       `Dopasowano do typera: ${matched}\n` +
+      `Mecze w trakcie: ${live}\n` +
       `Zakończone: ${finished}\n` +
-      `Zapisano wyników: ${saved}\n` +
-      `Zakończone bez wyniku: ${noScore}\n` +
-      `Niedopasowane nazwy: ${unmatched.length}`;
+      `Zapisano oficjalnych wyników: ${saved}\n` +
+      `Niedopasowane nazwy: ${unmatched.length}` +
+      (unmatched.length ? `\n\nPrzykłady niedopasowanych:\n${unmatched.slice(0,8).join("\n")}` : "")
+    );
 
-    alert(info + (unmatched.length ? `\n\nPrzykłady niedopasowanych:\n${unmatched.slice(0,8).join("\n")}` : ""));
-
-    showToast(`✅ API: zapisano ${saved} wyników`, "success");
+    showToast(`✅ API: live ${live}, zapisano ${saved}`, "success");
 
   }catch(e){
     console.error("Błąd API:", e);
     alert("Nie udało się pobrać wyników z API:\n\n" + (e.message || e));
   }
-}
+};
 
 
 async function refreshApiMatchesCache(){
@@ -1129,7 +1220,8 @@ function renderBracket(){
       if(off){
         mid=`<div class="bracket-score">${off.h}:${off.a}</div>`;
       }else if(locked){
-        mid=`<div class="lock-note">blokada</div>${p.h!==""&&p.a!==""?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px">typ: ${p.h}:${p.a}</div>`:""}`;
+        const liveHtml=liveScoreHtml(m);
+        mid=`${liveHtml || `<div class="lock-note">blokada</div>`}${p.h!==""&&p.a!==""?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px">typ: ${p.h}:${p.a}</div>`:""}`;
       }else{
         mid=`<div class="bracket-pred">
           <input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–">
@@ -1562,7 +1654,7 @@ window.fetchLive=async function(){ showToast("Ta funkcja została wyłączona.")
 document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
 setInterval(()=>{ if(currentUser) rerenderAll(); }, 60000);
-setInterval(()=>{ if(currentUser) refreshApiMatchesCache(); }, 120000);
+setInterval(()=>{ if(currentUser) refreshApiMatchesCache(); }, 30000);
 initFirebase();
 </script>
 </body>
