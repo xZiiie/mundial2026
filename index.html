@@ -359,17 +359,29 @@ const firebaseConfig = {
 
 const ADMIN_NICK = "kapiadmin";
 
-const API_RESULTS_BASE = ""; // jeśli backend jest osobno, wpisz np. "https://twoj-backend.onrender.com"
+const API_RESULTS_BASE = "https://mundial2026-4hfp.onrender.com"; // backend Render
 const API_TEAM_ALIASES = {
-  "Mexico":"Meksyk","South Africa":"RPA","Korea Republic":"Korea Płd.","South Korea":"Korea Płd.","Czech Republic":"Czechy",
-  "Canada":"Kanada","Bosnia and Herzegovina":"Bośnia i Herc.","Qatar":"Katar","Switzerland":"Szwajcaria","Brazil":"Brazylia",
-  "Morocco":"Maroko","Haiti":"Haiti","Scotland":"Szkocja","United States":"USA","USA":"USA","Paraguay":"Paragwaj","Australia":"Australia",
-  "Türkiye":"Turcja","Turkey":"Turcja","Germany":"Niemcy","Curacao":"Curaçao","Curaçao":"Curaçao","Ivory Coast":"Wybrzeże Kości Słoniowej",
-  "Ecuador":"Ekwador","Netherlands":"Holandia","Japan":"Japonia","Sweden":"Szwecja","Tunisia":"Tunezja","Belgium":"Belgia","Egypt":"Egipt",
-  "Iran":"Iran","New Zealand":"Nowa Zelandia","Spain":"Hiszpania","Cape Verde":"Republika Zielonego Przylądka","Saudi Arabia":"Arabia Saudyjska",
-  "Uruguay":"Urugwaj","France":"Francja","Senegal":"Senegal","Iraq":"Irak","Norway":"Norwegia","Argentina":"Argentyna","Algeria":"Algieria",
-  "Austria":"Austria","Jordan":"Jordania","Portugal":"Portugalia","DR Congo":"DR Kongo","Congo DR":"DR Kongo","Uzbekistan":"Uzbekistan",
-  "Colombia":"Kolumbia","England":"Anglia","Croatia":"Chorwacja","Ghana":"Ghana","Panama":"Panama"
+  "Mexico":"Meksyk", "South Africa":"RPA", "Korea Republic":"Korea Płd.", "South Korea":"Korea Płd.",
+  "Czechia":"Czechy", "Czech Republic":"Czechy", "Canada":"Kanada",
+  "Bosnia and Herzegovina":"Bośnia i Herc.", "Bosnia-Herzegovina":"Bośnia i Herc.",
+  "Qatar":"Katar", "Switzerland":"Szwajcaria", "Brazil":"Brazylia", "Morocco":"Maroko",
+  "Haiti":"Haiti", "Scotland":"Szkocja", "United States":"USA", "USA":"USA",
+  "Paraguay":"Paragwaj", "Australia":"Australia", "Türkiye":"Turcja", "Turkey":"Turcja",
+  "Germany":"Niemcy", "Curacao":"Curaçao", "Curaçao":"Curaçao",
+  "Ivory Coast":"Wybrzeże Kości Słoniowej",
+  "Cote d Ivoire":"Wybrzeże Kości Słoniowej", "Côte d'Ivoire":"Wybrzeże Kości Słoniowej",
+  "Ecuador":"Ekwador", "Netherlands":"Holandia", "Japan":"Japonia", "Sweden":"Szwecja",
+  "Tunisia":"Tunezja", "Belgium":"Belgia", "Egypt":"Egipt", "Iran":"Iran",
+  "New Zealand":"Nowa Zelandia", "Spain":"Hiszpania", "Cape Verde":"Republika Zielonego Przylądka",
+  "Cabo Verde":"Republika Zielonego Przylądka",
+  "Saudi Arabia":"Arabia Saudyjska", "Uruguay":"Urugwaj", "France":"Francja",
+  "Senegal":"Senegal", "Iraq":"Irak", "Norway":"Norwegia", "Argentina":"Argentyna",
+  "Algeria":"Algieria", "Austria":"Austria", "Jordan":"Jordania", "Portugal":"Portugalia",
+  "DR Congo":"DR Kongo",
+  "Congo DR":"DR Kongo",
+  "Democratic Republic of the Congo":"DR Kongo", "Congo DR":"DR Kongo", "Uzbekistan":"Uzbekistan",
+  "Colombia":"Kolumbia", "England":"Anglia", "Croatia":"Chorwacja", "Ghana":"Ghana",
+  "Panama":"Panama"
 };
 
 const COLORS = ["#185FA5","#0F6E56","#993C1D","#993556","#3B6D11","#854F0B","#534AB7","#A32D2D"];
@@ -460,6 +472,7 @@ let pointAdjustments = {};
 let usersCache = [];
 let predictionsCache = {};
 let championPredictionsCache = {};
+let apiMatchesCache = [];
 let unsubMain = null;
 
 function fbReady(){ return firebaseConfig.apiKey && firebaseConfig.apiKey !== "WKLEJ_TUTAJ"; }
@@ -484,7 +497,38 @@ function formatCountdown(ms){
   return `${mi}m`;
 }
 
+function getApiMatchForLocal(m){
+  if(!Array.isArray(apiMatchesCache)) return null;
+  return apiMatchesCache.find(x=>{
+    const home = apiTeamToLocal(x?.homeTeam?.name || "");
+    const away = apiTeamToLocal(x?.awayTeam?.name || "");
+    const found = findMatchByTeams(home, away);
+    return found && found.id === m.id;
+  }) || null;
+}
+
+function apiLiveScoreHtml(m){
+  const api = getApiMatchForLocal(m);
+  if(!api) return "";
+  const status = String(api.status || "").toUpperCase();
+  if(status !== "IN_PLAY" && status !== "PAUSED" && status !== "LIVE") return "";
+  const gh = api?.score?.fullTime?.home ?? api?.score?.halfTime?.home;
+  const ga = api?.score?.fullTime?.away ?? api?.score?.halfTime?.away;
+  if(gh === null || gh === undefined || ga === null || ga === undefined) return "";
+  return `<div style="font-size:13px;font-weight:700;color:#991b1b">${gh}:${ga}</div><div style="font-size:9px;color:#991b1b;font-weight:700;text-transform:uppercase">w trakcie</div>`;
+}
+
 function matchLiveStatus(m){
+  if(officialResults[m.id]) return {cls:"live-end", text:"koniec", active:false};
+
+  const api = getApiMatchForLocal(m);
+  if(api){
+    const status = String(api.status || "").toUpperCase();
+    if(status === "FINISHED") return {cls:"live-end", text:"koniec", active:false};
+    if(status === "IN_PLAY" || status === "PAUSED" || status === "LIVE") return {cls:"live-on", text:"w trakcie", active:true};
+    if(status === "TIMED" || status === "SCHEDULED") return {cls:"live-before", text:"przed meczem", active:false};
+  }
+
   const kick=matchKickoffMs(m);
   if(!kick) return {cls:"live-before", text:"brak godz.", active:false};
   const min=Math.floor((Date.now()-kick)/60000);
@@ -523,35 +567,121 @@ async function fetchAndSaveApiResults(){
     showToast("Tylko admin może pobierać wyniki.");
     return;
   }
+
   try{
     showToast("Pobieram wyniki z API...");
-    const res=await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
-    if(!res.ok) throw new Error(`API ${res.status}`);
-    const data=await res.json();
-    const fixtures=Array.isArray(data.response) ? data.response : [];
-    let matched=0, saved=0;
-    fixtures.forEach(fx=>{
-      const home=apiTeamToLocal(fx?.teams?.home?.name || "");
-      const away=apiTeamToLocal(fx?.teams?.away?.name || "");
-      const gh=fx?.goals?.home;
-      const ga=fx?.goals?.away;
-      const short=fx?.fixture?.status?.short || "";
-      const match=findMatchByTeams(home, away);
-      if(!match)return;
+
+    const url = `${API_RESULTS_BASE}/api/worldcup-2026`;
+    const res = await fetch(url, { cache: "no-store" });
+
+    let data;
+    try{
+      data = await res.json();
+    }catch(jsonErr){
+      throw new Error("Backend nie zwrócił JSON. Sprawdź Render: " + url);
+    }
+
+    if(!res.ok){
+      throw new Error(data?.error || `Backend API zwrócił błąd ${res.status}`);
+    }
+
+    if(data.error){
+      throw new Error(data.error);
+    }
+
+    const fixtures = Array.isArray(data.matches) ? data.matches : [];
+    apiMatchesCache = fixtures;
+
+    if(!fixtures.length){
+      alert("API działa, ale nie zwróciło żadnych meczów. Sprawdź endpoint /api/worldcup-2026 na Render.");
+      return;
+    }
+
+    let matched = 0;
+    let saved = 0;
+    let finished = 0;
+    let noScore = 0;
+    const unmatched = [];
+
+    fixtures.forEach(matchApi=>{
+      const rawHome = matchApi?.homeTeam?.name || "";
+      const rawAway = matchApi?.awayTeam?.name || "";
+      const home = apiTeamToLocal(rawHome);
+      const away = apiTeamToLocal(rawAway);
+
+      const localMatch = findMatchByTeams(home, away);
+
+      if(!localMatch){
+        unmatched.push(`${rawHome} - ${rawAway}`);
+        return;
+      }
+
       matched++;
-      if(!isApiFinalStatus(short))return;
-      if(!Number.isInteger(gh) || !Number.isInteger(ga))return;
-      officialResults[match.id]={h:gh,a:ga};
+
+      const status = String(matchApi?.status || "").toUpperCase();
+      if(status !== "FINISHED") return;
+
+      finished++;
+
+      const gh = matchApi?.score?.fullTime?.home;
+      const ga = matchApi?.score?.fullTime?.away;
+
+      if(gh === null || gh === undefined || ga === null || ga === undefined){
+        noScore++;
+        return;
+      }
+
+      officialResults[localMatch.id] = {
+        h: Number(gh),
+        a: Number(ga)
+      };
+
       saved++;
     });
-    await saveMain();
-    showToast(`✅ API: dopasowano ${matched}, zapisano ${saved} wyników`, "success");
+
+    if(saved > 0){
+      await saveMain();
+      await loadSharedOnce();
+    }
+
     rerenderAll();
+
+    const info =
+      `API football-data.org\n\n` +
+      `Pobrano meczów: ${fixtures.length}\n` +
+      `Dopasowano do typera: ${matched}\n` +
+      `Zakończone: ${finished}\n` +
+      `Zapisano wyników: ${saved}\n` +
+      `Zakończone bez wyniku: ${noScore}\n` +
+      `Niedopasowane nazwy: ${unmatched.length}`;
+
+    alert(info + (unmatched.length ? `\n\nPrzykłady niedopasowanych:\n${unmatched.slice(0,8).join("\n")}` : ""));
+
+    showToast(`✅ API: zapisano ${saved} wyników`, "success");
+
   }catch(e){
-    console.error(e);
-    alert("Nie udało się pobrać wyników z API: " + (e.message || e));
+    console.error("Błąd API:", e);
+    alert("Nie udało się pobrać wyników z API:\n\n" + (e.message || e));
   }
 }
+
+
+async function refreshApiMatchesCache(){
+  try{
+    const res = await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
+    if(!res.ok) return;
+    const data = await res.json();
+    if(Array.isArray(data.matches)){
+      apiMatchesCache = data.matches;
+      rerenderAll();
+    }
+  }catch(e){
+    console.warn("Nie udało się odświeżyć statusów z API:", e);
+  }
+}
+
+
+function liveScoreHtml(m){ return apiLiveScoreHtml(m); }
 
 function matchKickoffMs(m){
   if(m.kickoffUtc){
@@ -731,6 +861,7 @@ async function enterApp(){
   document.getElementById("mainRole").textContent=isAdmin()?"Administrator":"Gracz";
   document.getElementById("adminTab").style.display=isAdmin()?"":"none";
   rerenderAll();
+  refreshApiMatchesCache();
 }
 
 function rerenderAll(){ if(!currentUser)return; renderDashboard(); renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); renderBracket(); renderAllPredictions(); if(isAdmin()) renderAdminList(); }
@@ -826,7 +957,8 @@ function renderMatchList(){
     if(off){
       mid=`<div class="res-col"><div style="font-size:14px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div></div>`;
     } else if(locked){
-      mid=`<div class="res-col">${p.h!=="" && p.a!=="" ? `<div style="font-size:13px;font-weight:500">typ: ${p.h}:${p.a}</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak typu</div>`}<div class="lock-note">blokada</div></div>`;
+      const liveHtml=liveScoreHtml(m);
+      mid=`<div class="res-col">${liveHtml || (p.h!=="" && p.a!=="" ? `<div style="font-size:13px;font-weight:500">typ: ${p.h}:${p.a}</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak typu</div>`)}<div class="lock-note">blokada</div></div>`;
     } else {
       mid=`<div class="res-col"><div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center"><input class="sc" type="number" min="0" max="20" id="p_${m.id}_h" value="${p.h}" placeholder="–"><span class="sep">:</span><input class="sc" type="number" min="0" max="20" id="p_${m.id}_a" value="${p.a}" placeholder="–"><button class="btn sm primary" type="button" onclick="saveSinglePrediction('${jsStr(m.id)}')" title="Zapisz ten typ" style="padding:4px 7px"><i class="ti ti-check"></i></button>${p.h!==""&&p.a!==""?`<button class="btn sm danger" type="button" onclick="clearMyPrediction('${jsStr(m.id)}')" title="Usuń typ" style="padding:4px 6px"><i class="ti ti-x"></i></button>`:""}</div>${p.h!==""&&p.a!==""?`<div style="font-size:9px;color:var(--color-text-tertiary)">zapisany: ${p.h}:${p.a} · możesz zmienić</div>`:`<div style="font-size:9px;color:var(--color-text-tertiary)">wpisz i kliknij ✓</div>`}</div>`;
     }
@@ -952,7 +1084,7 @@ function renderResults(){
     else if(pts===0&&off)badge=`<span style="font-size:11px;color:var(--color-text-tertiary)">0 pkt</span>`;
     const row=document.createElement("div");
     row.className="match-row";
-    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} ${livePill(m)}</div>${teamName(m.h)}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
+    row.innerHTML=`<span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} ${livePill(m)}</div>${teamName(m.h)}</span><div class="res-col">${off?`<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>`:(liveScoreHtml(m)||`<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`)}${pred?`<div style="font-size:10px;color:var(--color-text-secondary)">typ: ${pred.h}:${pred.a}</div>`:""}${badge}</div><span class="team r" style="font-size:12px">${teamName(m.a)}<div style="font-size:9px;color:var(--color-text-tertiary);font-weight:400">${m.g || ""}</div></span>`;
     card.appendChild(row);
   });
   if(any) list.appendChild(card);
@@ -1430,6 +1562,7 @@ window.fetchLive=async function(){ showToast("Ta funkcja została wyłączona.")
 document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
 setInterval(()=>{ if(currentUser) rerenderAll(); }, 60000);
+setInterval(()=>{ if(currentUser) refreshApiMatchesCache(); }, 120000);
 initFirebase();
 </script>
 </body>
