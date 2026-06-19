@@ -339,7 +339,7 @@
     <div id="tTypyGraczy" class="section">
       <div class="info-box">
         <i class="ti ti-users" style="font-size:16px;flex-shrink:0" aria-hidden="true"></i>
-        <span>Typy innych graczy są widoczne od razu — niezależnie od blokady i oficjalnego wyniku.</span>
+        <span>Typy innych graczy są widoczne dopiero po blokadzie danego meczu. Wcześniej są ukryte.</span>
       </div>
       <div id="allPredictionsList"></div>
     </div>
@@ -1325,6 +1325,11 @@ function renderBracket(){
   list.appendChild(card);
 }
 
+
+function canShowOtherPlayersPredictions(m){
+  return isAdmin() || isPredictionLocked(m) || !!officialResults[m.id];
+}
+
 function renderAllPredictions(){
   const list=document.getElementById("allPredictionsList");
   if(!list)return;
@@ -1361,8 +1366,14 @@ function renderAllPredictions(){
       lastDate=dateLabel;
     }
     const off=officialResults[m.id];
+    const visibleForOthers = canShowOtherPlayersPredictions(m);
     const rows=players.map(nick=>{
       const pred=getPredsForNick(nick)[m.id];
+
+      if(!visibleForOthers){
+        return `<tr><td>${nick}</td><td class="pred-empty">🔒 ukryte do blokady</td><td>—</td></tr>`;
+      }
+
       const pts=calcPts(pred,off);
       const score=pred ? `${pred.h}:${pred.a}` : "brak";
       return `<tr><td>${nick}</td><td class="${pred ? "pred-ok" : "pred-empty"}">${score}</td><td>${pts===null ? "—" : pts+" pkt"}</td></tr>`;
@@ -1372,7 +1383,7 @@ function renderAllPredictions(){
     box.style.marginTop="10px";
     any=true;
     box.innerHTML=`<div class="match-row" style="border-bottom:none;padding-bottom:2px">
-      <span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} · ${m.g || ""}</div>${m.h}</span>
+      <span class="team" style="font-size:12px"><div class="match-date">${m.time || ""} · ${m.g || ""}</div>${m.h} ${!canShowOtherPlayersPredictions(m)?`<span class="badge" style="background:#fff7ed;color:#9a3412;margin-left:4px">typy ukryte</span>`:""}</span>
       <div class="res-col">${off ? `<div style="font-size:13px;font-weight:500">${off.h}:${off.a}</div><div style="font-size:9px;color:var(--color-text-tertiary)">oficjalny</div>` : `<div style="font-size:11px;color:var(--color-text-tertiary)">brak wyniku</div>`}</div>
       <span class="team r" style="font-size:12px">${m.a}</span>
     </div>
