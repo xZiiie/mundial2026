@@ -356,7 +356,6 @@
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
         <button class="btn primary" onclick="saveOfficial()"><i class="ti ti-device-floppy" aria-hidden="true"></i> Zapisz wyniki</button>
-        <button class="btn" onclick="fetchAndSaveApiResults()"><i class="ti ti-cloud-download" aria-hidden="true"></i> Sprawdź / zaktualizuj wyniki</button>
         <button class="btn" onclick="showKnockoutForm()"><i class="ti ti-tournament" aria-hidden="true"></i> Dodaj mecz do drabinki</button>
       </div>
       <div id="knockoutFormCard" class="card" style="display:none;margin-top:12px">
@@ -546,7 +545,6 @@ let predictionsCache = {};
 let championPredictionsCache = {};
 let apiMatchesCache = [];
 let apiLockedMatchIds = [];
-const API_LOCKS_STORAGE_KEY = "mundial2026_api_locked_match_ids";
 let unsubMain = null;
 
 function fbReady(){ return firebaseConfig.apiKey && firebaseConfig.apiKey !== "WKLEJ_TUTAJ"; }
@@ -637,7 +635,6 @@ function apiMinuteText(api, localMatch=null){
 }
 
 function apiLiveScoreHtml(m){
-  if(isApiUpdateLocked(m.id)) return "";
   const api = getApiMatchForLocal(m);
   if(!api || !apiStatusIsLive(api)) return "";
   const sc = apiScoreForMatch(api);
@@ -646,26 +643,14 @@ function apiLiveScoreHtml(m){
   return `<div class="live-score-box">${sc.h}:${sc.a}</div><div class="live-score-sub">${minute || "w trakcie"}</div>`;
 }
 
-
 function matchLiveStatus(m){
-  if(!isApiUpdateLocked(m.id)){
-    const apiStatus = apiStatusForLocalMatch(m);
-
-    if(apiStatus === "FINISHED"){
-      return {cls:"live-end", text:"koniec", active:false};
-    }
-
-    if(apiStatus === "IN_PLAY" || apiStatus === "PAUSED" || apiStatus === "LIVE"){
-      return {cls:"live-on", text:"w trakcie", active:true};
-    }
-  }
-
   if(officialResults[m.id]){
     return {cls:"live-end", text:"koniec", active:false};
   }
 
   const kick=matchKickoffMs(m);
   if(!kick) return {cls:"live-before", text:"brak godz.", active:false};
+
   const min=Math.floor((Date.now()-kick)/60000);
   if(min < 0) return {cls:"live-before", text:"przed meczem", active:false};
   if(min <= 120) return {cls:"live-on", text:"w trakcie", active:true};
@@ -780,49 +765,26 @@ function apiStatusForLocalMatch(m){
 }
 
 
-
-function readApiLocksLocal(){
-  try{
-    const raw=localStorage.getItem(API_LOCKS_STORAGE_KEY);
-    const arr=raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  }catch(e){ return []; }
-}
-function writeApiLocksLocal(arr){
-  try{ localStorage.setItem(API_LOCKS_STORAGE_KEY, JSON.stringify(Array.isArray(arr)?arr:[])); }catch(e){}
-}
-function syncApiLocksLocal(){
-  const local=readApiLocksLocal();
-  const set=new Set([...(apiLockedMatchIds||[]), ...local]);
-  apiLockedMatchIds=Array.from(set);
-  writeApiLocksLocal(apiLockedMatchIds);
-}
-
 function isApiUpdateLocked(matchId){
-  const mem = Array.isArray(apiLockedMatchIds) ? apiLockedMatchIds : [];
-  const loc = readApiLocksLocal();
-  return mem.includes(matchId) || loc.includes(matchId);
+  return Array.isArray(apiLockedMatchIds) && apiLockedMatchIds.includes(matchId);
 }
 
 window.toggleApiLockForMatch=async function(matchId){
   if(!isAdmin()) return;
 
-  syncApiLocksLocal();
+  apiLockedMatchIds = Array.isArray(apiLockedMatchIds) ? apiLockedMatchIds : [];
 
   if(apiLockedMatchIds.includes(matchId)){
     apiLockedMatchIds = apiLockedMatchIds.filter(id=>id!==matchId);
     showToast("🔓 API znowu może aktualizować ten mecz", "success");
   }else{
     apiLockedMatchIds.push(matchId);
-    showToast("🔒 API nie będzie nadpisywać ani pokazywać live tego meczu", "success");
+    showToast("🔒 API nie będzie nadpisywać tego meczu", "success");
   }
 
-  writeApiLocksLocal(apiLockedMatchIds);
   await saveMain();
-  await loadSharedOnce();
   rerenderAll();
 };
-
 
 function apiLockButtonHtml(matchId){
   const locked=isApiUpdateLocked(matchId);
@@ -849,7 +811,6 @@ async function autoUpdateResultsFromApi(showAlert=false){
     let withScore = 0;
     let finished = 0;
     let live = 0;
-    let skippedLocked = 0;
 
     matches.forEach(apiMatch=>{
       const home = apiTeamToLocal(apiMatch?.homeTeam?.name || "");
@@ -857,28 +818,20 @@ async function autoUpdateResultsFromApi(showAlert=false){
       const local = findMatchByTeams(home, away);
       if(!local) return;
 
-      if(isApiUpdateLocked(local.id)){
-        skippedLocked++;
-        return;
-      }
-
       matched++;
 
       const status = String(apiMatch?.status || "").toUpperCase();
       if(status === "FINISHED") finished++;
       if(status === "IN_PLAY" || status === "PAUSED" || status === "LIVE") live++;
 
-      if(isApiUpdateLocked(local.id)){
-        skippedLocked++;
-        return;
-      }
+      if(isApiUpdateLocked(local.id)) return;
 
       const score = apiScoreForSimple(apiMatch);
       if(!score) return;
 
       withScore++;
 
-      // Nadpisuj wynik zawsze, jeśli API daje inny wynik, chyba że admin zablokował API dla meczu.
+      // Nadpisuj wynik zawsze, jeśli API daje inny wynik.
       const old = officialResults[local.id];
       if(!old || Number(old.h)!==score.h || Number(old.a)!==score.a){
         officialResults[local.id] = {h:score.h, a:score.a};
@@ -905,7 +858,6 @@ async function autoUpdateResultsFromApi(showAlert=false){
         `Mecze z wynikiem: ${withScore}\n` +
         `Live: ${live}\n` +
         `Zakończone: ${finished}\n` +
-        `Pominięte przez blokadę API: ${skippedLocked}\n` +
         `Zmieniono w typerze: ${changed}`
       );
     }
@@ -914,6 +866,7 @@ async function autoUpdateResultsFromApi(showAlert=false){
     if(showAlert) alert("Nie udało się pobrać API: " + (e.message || e));
   }
 }
+
 
 window.fetchAndSaveApiResults = async function(){
   await autoUpdateResultsFromApi(true);
@@ -985,9 +938,8 @@ async function loadSharedOnce(){
   extraMatches=data.extraMatches || [];
   deletedMatchIds=data.deletedMatchIds || [];
   pointAdjustments=data.pointAdjustments || {};
+    apiLockedMatchIds=data.apiLockedMatchIds || [];
   apiLockedMatchIds=data.apiLockedMatchIds || [];
-    syncApiLocksLocal();
-  syncApiLocksLocal();
   await loadUsersAndPredictions();
 }
 
@@ -1000,22 +952,21 @@ function watchShared(){
     extraMatches=data.extraMatches || [];
     deletedMatchIds=data.deletedMatchIds || [];
     pointAdjustments=data.pointAdjustments || {};
-    apiLockedMatchIds=data.apiLockedMatchIds || [];
     await loadUsersAndPredictions();
     rerenderAll();
   });
 }
 
 async function saveMain(){
-  syncApiLocksLocal();
-  // UWAGA: pełny zapis dokumentu, żeby usunięte wyniki i blokady API naprawdę znikały po odświeżeniu.
+  // UWAGA: nie używamy merge:true, bo Firestore przy merge zostawia stare klucze
+  // w mapie officialResults. Dzięki pełnemu zapisowi usunięty wynik naprawdę znika
+  // z bazy i nie nalicza już punktów po odświeżeniu.
   await setDoc(doc(db,"app","main"), {
     officialResults: officialResults || {},
     officialChampion: officialChampion || "",
     extraMatches: extraMatches || [],
     deletedMatchIds: deletedMatchIds || [],
-    pointAdjustments: pointAdjustments || {},
-    apiLockedMatchIds: apiLockedMatchIds || []
+    pointAdjustments: pointAdjustments || {}
   });
 }
 
@@ -1176,7 +1127,6 @@ window.saveChampionPick=async function(){
   await saveChampionForCurrentUser(sel.value);
   showToast("✅ Typ mistrza zapisany i zablokowany!", "success");
   rerenderAll();
-  autoUpdateResultsFromApi(false);
 }
 
 function renderMatchList(){
@@ -2005,32 +1955,6 @@ window.fetchLive=async function(){ showToast("Ta funkcja została wyłączona.")
 document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
 setInterval(()=>{ if(currentUser) rerenderAll(); }, 60000);
-setInterval(()=>{ if(currentUser) autoUpdateResultsFromApi(false); }, 30000);
-
-
-// Globalne aliasy dla przycisków onclick w pliku type=module
-try{ if(typeof clearMyPrediction==="function") window.clearMyPrediction=clearMyPrediction; }catch(e){}
-try{ if(typeof clearOfficialChampion==="function") window.clearOfficialChampion=clearOfficialChampion; }catch(e){}
-try{ if(typeof clearOfficialMatch==="function") window.clearOfficialMatch=clearOfficialMatch; }catch(e){}
-try{ if(typeof deleteKnockoutMatchDirect==="function") window.deleteKnockoutMatchDirect=deleteKnockoutMatchDirect; }catch(e){}
-try{ if(typeof deleteMatch==="function") window.deleteMatch=deleteMatch; }catch(e){}
-try{ if(typeof deletePlayer==="function") window.deletePlayer=deletePlayer; }catch(e){}
-try{ if(typeof doLogout==="function") window.doLogout=doLogout; }catch(e){}
-try{ if(typeof fetchAndSaveApiResults==="function") window.fetchAndSaveApiResults=fetchAndSaveApiResults; }catch(e){}
-try{ if(typeof hideKnockoutForm==="function") window.hideKnockoutForm=hideKnockoutForm; }catch(e){}
-try{ if(typeof saveChampionPick==="function") window.saveChampionPick=saveChampionPick; }catch(e){}
-try{ if(typeof saveKnockoutForm==="function") window.saveKnockoutForm=saveKnockoutForm; }catch(e){}
-try{ if(typeof saveOfficial==="function") window.saveOfficial=saveOfficial; }catch(e){}
-try{ if(typeof saveOfficialChampion==="function") window.saveOfficialChampion=saveOfficialChampion; }catch(e){}
-try{ if(typeof saveOfficialMatch==="function") window.saveOfficialMatch=saveOfficialMatch; }catch(e){}
-try{ if(typeof savePlayerAdjustment==="function") window.savePlayerAdjustment=savePlayerAdjustment; }catch(e){}
-try{ if(typeof savePredictions==="function") window.savePredictions=savePredictions; }catch(e){}
-try{ if(typeof saveSinglePrediction==="function") window.saveSinglePrediction=saveSinglePrediction; }catch(e){}
-try{ if(typeof showKnockoutForm==="function") window.showKnockoutForm=showKnockoutForm; }catch(e){}
-try{ if(typeof showLoginView==="function") window.showLoginView=showLoginView; }catch(e){}
-try{ if(typeof showRegView==="function") window.showRegView=showRegView; }catch(e){}
-try{ if(typeof switchTab==="function") window.switchTab=switchTab; }catch(e){}
-try{ if(typeof toggleApiLockForMatch==="function") window.toggleApiLockForMatch=toggleApiLockForMatch; }catch(e){}
 
 function bindLoginButtons(){
   try{
@@ -2095,6 +2019,35 @@ setTimeout(()=>{ exposeClickFunctions(); bindLoginButtons(); }, 1200);
 
 exposeClickFunctions();
 bindLoginButtons();
+
+// === API WYŁĄCZONE — wyniki wpisuje admin ręcznie ===
+window.fetchAndSaveApiResults = async function(){
+  alert("API jest wyłączone. Wyniki wpisuje admin ręcznie.");
+};
+
+if(typeof autoUpdateResultsFromApi === "function"){
+  autoUpdateResultsFromApi = async function(showAlert=false){
+    if(showAlert) alert("API jest wyłączone. Wyniki wpisuje admin ręcznie.");
+    return;
+  };
+}
+
+if(typeof refreshApiMatchesCache === "function"){
+  refreshApiMatchesCache = async function(){ return; };
+}
+
+if(typeof getApiMatchForLocal === "function"){
+  getApiMatchForLocal = function(m){ return null; };
+}
+
+if(typeof apiLiveScoreHtml === "function"){
+  apiLiveScoreHtml = function(m){ return ""; };
+}
+
+if(typeof liveScoreHtml === "function"){
+  liveScoreHtml = function(m){ return ""; };
+}
+
 initFirebase().catch(e=>{
   showStartupError("Błąd startu aplikacji: " + (e.message || e));
   console.error(e);
