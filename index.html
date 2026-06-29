@@ -546,6 +546,7 @@ let predictionsCache = {};
 let championPredictionsCache = {};
 let apiMatchesCache = [];
 let apiLockedMatchIds = [];
+const API_LOCKS_STORAGE_KEY = "mundial2026_api_locked_match_ids";
 let unsubMain = null;
 
 function fbReady(){ return firebaseConfig.apiKey && firebaseConfig.apiKey !== "WKLEJ_TUTAJ"; }
@@ -636,6 +637,7 @@ function apiMinuteText(api, localMatch=null){
 }
 
 function apiLiveScoreHtml(m){
+  if(isApiUpdateLocked(m.id)) return "";
   const api = getApiMatchForLocal(m);
   if(!api || !apiStatusIsLive(api)) return "";
   const sc = apiScoreForMatch(api);
@@ -644,19 +646,20 @@ function apiLiveScoreHtml(m){
   return `<div class="live-score-box">${sc.h}:${sc.a}</div><div class="live-score-sub">${minute || "w trakcie"}</div>`;
 }
 
+
 function matchLiveStatus(m){
-  const apiStatus = apiStatusForLocalMatch(m);
+  if(!isApiUpdateLocked(m.id)){
+    const apiStatus = apiStatusForLocalMatch(m);
 
-  if(apiStatus === "FINISHED"){
-    return {cls:"live-end", text:"koniec", active:false};
+    if(apiStatus === "FINISHED"){
+      return {cls:"live-end", text:"koniec", active:false};
+    }
+
+    if(apiStatus === "IN_PLAY" || apiStatus === "PAUSED" || apiStatus === "LIVE"){
+      return {cls:"live-on", text:"w trakcie", active:true};
+    }
   }
 
-  if(apiStatus === "IN_PLAY" || apiStatus === "PAUSED" || apiStatus === "LIVE"){
-    return {cls:"live-on", text:"w trakcie", active:true};
-  }
-
-  // Jeśli mamy już oficjalny wynik, traktujemy mecz jako zakończony.
-  // To naprawia sytuację, gdy mecz się skończył, ale licznik czasu dalej pokazywał aktywny.
   if(officialResults[m.id]){
     return {cls:"live-end", text:"koniec", active:false};
   }
@@ -668,6 +671,7 @@ function matchLiveStatus(m){
   if(min <= 120) return {cls:"live-on", text:"w trakcie", active:true};
   return {cls:"live-end", text:"koniec", active:false};
 }
+
 function livePill(m){
   const s=matchLiveStatus(m);
   return `<span class="live-pill ${s.cls}">${s.active?`<span class="live-dot"></span>`:""}${s.text}</span>`;
@@ -776,26 +780,49 @@ function apiStatusForLocalMatch(m){
 }
 
 
+
+function readApiLocksLocal(){
+  try{
+    const raw=localStorage.getItem(API_LOCKS_STORAGE_KEY);
+    const arr=raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function writeApiLocksLocal(arr){
+  try{ localStorage.setItem(API_LOCKS_STORAGE_KEY, JSON.stringify(Array.isArray(arr)?arr:[])); }catch(e){}
+}
+function syncApiLocksLocal(){
+  const local=readApiLocksLocal();
+  const set=new Set([...(apiLockedMatchIds||[]), ...local]);
+  apiLockedMatchIds=Array.from(set);
+  writeApiLocksLocal(apiLockedMatchIds);
+}
+
 function isApiUpdateLocked(matchId){
-  return Array.isArray(apiLockedMatchIds) && apiLockedMatchIds.includes(matchId);
+  const mem = Array.isArray(apiLockedMatchIds) ? apiLockedMatchIds : [];
+  const loc = readApiLocksLocal();
+  return mem.includes(matchId) || loc.includes(matchId);
 }
 
 window.toggleApiLockForMatch=async function(matchId){
   if(!isAdmin()) return;
 
-  apiLockedMatchIds = Array.isArray(apiLockedMatchIds) ? apiLockedMatchIds : [];
+  syncApiLocksLocal();
 
   if(apiLockedMatchIds.includes(matchId)){
     apiLockedMatchIds = apiLockedMatchIds.filter(id=>id!==matchId);
     showToast("🔓 API znowu może aktualizować ten mecz", "success");
   }else{
     apiLockedMatchIds.push(matchId);
-    showToast("🔒 API nie będzie nadpisywać tego meczu", "success");
+    showToast("🔒 API nie będzie nadpisywać ani pokazywać live tego meczu", "success");
   }
 
+  writeApiLocksLocal(apiLockedMatchIds);
   await saveMain();
+  await loadSharedOnce();
   rerenderAll();
 };
+
 
 function apiLockButtonHtml(matchId){
   const locked=isApiUpdateLocked(matchId);
@@ -829,6 +856,11 @@ async function autoUpdateResultsFromApi(showAlert=false){
       const away = apiTeamToLocal(apiMatch?.awayTeam?.name || "");
       const local = findMatchByTeams(home, away);
       if(!local) return;
+
+      if(isApiUpdateLocked(local.id)){
+        skippedLocked++;
+        return;
+      }
 
       matched++;
 
@@ -954,6 +986,8 @@ async function loadSharedOnce(){
   deletedMatchIds=data.deletedMatchIds || [];
   pointAdjustments=data.pointAdjustments || {};
   apiLockedMatchIds=data.apiLockedMatchIds || [];
+    syncApiLocksLocal();
+  syncApiLocksLocal();
   await loadUsersAndPredictions();
 }
 
@@ -973,6 +1007,7 @@ function watchShared(){
 }
 
 async function saveMain(){
+  syncApiLocksLocal();
   // UWAGA: pełny zapis dokumentu, żeby usunięte wyniki i blokady API naprawdę znikały po odświeżeniu.
   await setDoc(doc(db,"app","main"), {
     officialResults: officialResults || {},
