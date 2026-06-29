@@ -822,6 +822,7 @@ async function autoUpdateResultsFromApi(showAlert=false){
     let withScore = 0;
     let finished = 0;
     let live = 0;
+    let skippedLocked = 0;
 
     matches.forEach(apiMatch=>{
       const home = apiTeamToLocal(apiMatch?.homeTeam?.name || "");
@@ -835,14 +836,17 @@ async function autoUpdateResultsFromApi(showAlert=false){
       if(status === "FINISHED") finished++;
       if(status === "IN_PLAY" || status === "PAUSED" || status === "LIVE") live++;
 
-      if(isApiUpdateLocked(local.id)) return;
+      if(isApiUpdateLocked(local.id)){
+        skippedLocked++;
+        return;
+      }
 
       const score = apiScoreForSimple(apiMatch);
       if(!score) return;
 
       withScore++;
 
-      // Nadpisuj wynik zawsze, jeśli API daje inny wynik.
+      // Nadpisuj wynik zawsze, jeśli API daje inny wynik, chyba że admin zablokował API dla meczu.
       const old = officialResults[local.id];
       if(!old || Number(old.h)!==score.h || Number(old.a)!==score.a){
         officialResults[local.id] = {h:score.h, a:score.a};
@@ -869,6 +873,7 @@ async function autoUpdateResultsFromApi(showAlert=false){
         `Mecze z wynikiem: ${withScore}\n` +
         `Live: ${live}\n` +
         `Zakończone: ${finished}\n` +
+        `Pominięte przez blokadę API: ${skippedLocked}\n` +
         `Zmieniono w typerze: ${changed}`
       );
     }
@@ -877,7 +882,6 @@ async function autoUpdateResultsFromApi(showAlert=false){
     if(showAlert) alert("Nie udało się pobrać API: " + (e.message || e));
   }
 }
-
 
 window.fetchAndSaveApiResults = async function(){
   await autoUpdateResultsFromApi(true);
@@ -949,7 +953,6 @@ async function loadSharedOnce(){
   extraMatches=data.extraMatches || [];
   deletedMatchIds=data.deletedMatchIds || [];
   pointAdjustments=data.pointAdjustments || {};
-    apiLockedMatchIds=data.apiLockedMatchIds || [];
   apiLockedMatchIds=data.apiLockedMatchIds || [];
   await loadUsersAndPredictions();
 }
@@ -963,21 +966,21 @@ function watchShared(){
     extraMatches=data.extraMatches || [];
     deletedMatchIds=data.deletedMatchIds || [];
     pointAdjustments=data.pointAdjustments || {};
+    apiLockedMatchIds=data.apiLockedMatchIds || [];
     await loadUsersAndPredictions();
     rerenderAll();
   });
 }
 
 async function saveMain(){
-  // UWAGA: nie używamy merge:true, bo Firestore przy merge zostawia stare klucze
-  // w mapie officialResults. Dzięki pełnemu zapisowi usunięty wynik naprawdę znika
-  // z bazy i nie nalicza już punktów po odświeżeniu.
+  // UWAGA: pełny zapis dokumentu, żeby usunięte wyniki i blokady API naprawdę znikały po odświeżeniu.
   await setDoc(doc(db,"app","main"), {
     officialResults: officialResults || {},
     officialChampion: officialChampion || "",
     extraMatches: extraMatches || [],
     deletedMatchIds: deletedMatchIds || [],
-    pointAdjustments: pointAdjustments || {}
+    pointAdjustments: pointAdjustments || {},
+    apiLockedMatchIds: apiLockedMatchIds || []
   });
 }
 
@@ -1968,6 +1971,31 @@ document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="
 document.getElementById("loginName").addEventListener("keydown",e=>{if(e.key==="Enter")document.getElementById("loginPass").focus();});
 setInterval(()=>{ if(currentUser) rerenderAll(); }, 60000);
 setInterval(()=>{ if(currentUser) autoUpdateResultsFromApi(false); }, 30000);
+
+
+// Globalne aliasy dla przycisków onclick w pliku type=module
+try{ if(typeof clearMyPrediction==="function") window.clearMyPrediction=clearMyPrediction; }catch(e){}
+try{ if(typeof clearOfficialChampion==="function") window.clearOfficialChampion=clearOfficialChampion; }catch(e){}
+try{ if(typeof clearOfficialMatch==="function") window.clearOfficialMatch=clearOfficialMatch; }catch(e){}
+try{ if(typeof deleteKnockoutMatchDirect==="function") window.deleteKnockoutMatchDirect=deleteKnockoutMatchDirect; }catch(e){}
+try{ if(typeof deleteMatch==="function") window.deleteMatch=deleteMatch; }catch(e){}
+try{ if(typeof deletePlayer==="function") window.deletePlayer=deletePlayer; }catch(e){}
+try{ if(typeof doLogout==="function") window.doLogout=doLogout; }catch(e){}
+try{ if(typeof fetchAndSaveApiResults==="function") window.fetchAndSaveApiResults=fetchAndSaveApiResults; }catch(e){}
+try{ if(typeof hideKnockoutForm==="function") window.hideKnockoutForm=hideKnockoutForm; }catch(e){}
+try{ if(typeof saveChampionPick==="function") window.saveChampionPick=saveChampionPick; }catch(e){}
+try{ if(typeof saveKnockoutForm==="function") window.saveKnockoutForm=saveKnockoutForm; }catch(e){}
+try{ if(typeof saveOfficial==="function") window.saveOfficial=saveOfficial; }catch(e){}
+try{ if(typeof saveOfficialChampion==="function") window.saveOfficialChampion=saveOfficialChampion; }catch(e){}
+try{ if(typeof saveOfficialMatch==="function") window.saveOfficialMatch=saveOfficialMatch; }catch(e){}
+try{ if(typeof savePlayerAdjustment==="function") window.savePlayerAdjustment=savePlayerAdjustment; }catch(e){}
+try{ if(typeof savePredictions==="function") window.savePredictions=savePredictions; }catch(e){}
+try{ if(typeof saveSinglePrediction==="function") window.saveSinglePrediction=saveSinglePrediction; }catch(e){}
+try{ if(typeof showKnockoutForm==="function") window.showKnockoutForm=showKnockoutForm; }catch(e){}
+try{ if(typeof showLoginView==="function") window.showLoginView=showLoginView; }catch(e){}
+try{ if(typeof showRegView==="function") window.showRegView=showRegView; }catch(e){}
+try{ if(typeof switchTab==="function") window.switchTab=switchTab; }catch(e){}
+try{ if(typeof toggleApiLockForMatch==="function") window.toggleApiLockForMatch=toggleApiLockForMatch; }catch(e){}
 
 function bindLoginButtons(){
   try{
