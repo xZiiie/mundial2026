@@ -545,6 +545,7 @@ let usersCache = [];
 let predictionsCache = {};
 let championPredictionsCache = {};
 let apiMatchesCache = [];
+let apiLockedMatchIds = [];
 let unsubMain = null;
 
 function fbReady(){ return firebaseConfig.apiKey && firebaseConfig.apiKey !== "WKLEJ_TUTAJ"; }
@@ -774,6 +775,35 @@ function apiStatusForLocalMatch(m){
   return String(api?.status || "").toUpperCase();
 }
 
+
+function isApiUpdateLocked(matchId){
+  return Array.isArray(apiLockedMatchIds) && apiLockedMatchIds.includes(matchId);
+}
+
+window.toggleApiLockForMatch=async function(matchId){
+  if(!isAdmin()) return;
+
+  apiLockedMatchIds = Array.isArray(apiLockedMatchIds) ? apiLockedMatchIds : [];
+
+  if(apiLockedMatchIds.includes(matchId)){
+    apiLockedMatchIds = apiLockedMatchIds.filter(id=>id!==matchId);
+    showToast("🔓 API znowu może aktualizować ten mecz", "success");
+  }else{
+    apiLockedMatchIds.push(matchId);
+    showToast("🔒 API nie będzie nadpisywać tego meczu", "success");
+  }
+
+  await saveMain();
+  rerenderAll();
+};
+
+function apiLockButtonHtml(matchId){
+  const locked=isApiUpdateLocked(matchId);
+  return `<button type="button" class="btn sm ${locked ? "danger" : ""}" onclick="toggleApiLockForMatch('${jsStr(matchId)}')" title="Blokada aktualizacji z API">
+    <i class="ti ${locked ? "ti-lock" : "ti-lock-open"}"></i> ${locked ? "API zablokowane" : "Blokuj API"}
+  </button>`;
+}
+
 async function autoUpdateResultsFromApi(showAlert=false){
   try{
     const res = await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
@@ -804,6 +834,8 @@ async function autoUpdateResultsFromApi(showAlert=false){
       const status = String(apiMatch?.status || "").toUpperCase();
       if(status === "FINISHED") finished++;
       if(status === "IN_PLAY" || status === "PAUSED" || status === "LIVE") live++;
+
+      if(isApiUpdateLocked(local.id)) return;
 
       const score = apiScoreForSimple(apiMatch);
       if(!score) return;
@@ -917,6 +949,8 @@ async function loadSharedOnce(){
   extraMatches=data.extraMatches || [];
   deletedMatchIds=data.deletedMatchIds || [];
   pointAdjustments=data.pointAdjustments || {};
+    apiLockedMatchIds=data.apiLockedMatchIds || [];
+  apiLockedMatchIds=data.apiLockedMatchIds || [];
   await loadUsersAndPredictions();
 }
 
@@ -1693,6 +1727,7 @@ function renderAdminMatches(){
         <input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–">
         <button class="btn sm" onclick="saveOfficialMatch('${jsStr(m.id)}')" title="Zapisz ten wynik"><i class="ti ti-device-floppy"></i></button>
         <button class="btn sm danger" onclick="clearOfficialMatch('${jsStr(m.id)}')" title="Wyczyść wynik"><i class="ti ti-x"></i></button>
+        ${apiLockButtonHtml(m.id)}
       </div>
       <span class="team r" style="font-size:12px">${teamName(m.a)}</span>`;
     list.appendChild(row);
@@ -1737,6 +1772,7 @@ window.deleteKnockoutMatchDirect=async function(matchId){
 
   try{
     extraMatches = extraMatches.filter(m=>m.id!==matchId);
+    apiLockedMatchIds = (apiLockedMatchIds || []).filter(id=>id!==matchId);
     if(officialResults && Object.prototype.hasOwnProperty.call(officialResults, matchId)){
       delete officialResults[matchId];
     }
@@ -1797,6 +1833,7 @@ window.deleteMatch=async function(matchId){
     // Jeżeli to mecz wbudowany, dodaj go do ukrytych.
     if(isBuiltIn && !deletedMatchIds.includes(matchId)){
       deletedMatchIds.push(matchId);
+  apiLockedMatchIds = (apiLockedMatchIds || []).filter(id=>id!==matchId);
     }
 
     // Usuń oficjalny wynik.
