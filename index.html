@@ -570,13 +570,7 @@ function formatCountdown(ms){
 }
 
 function getApiMatchForLocal(m){
-  if(!Array.isArray(apiMatchesCache)) return null;
-  return apiMatchesCache.find(x=>{
-    const home = apiTeamToLocal(x?.homeTeam?.name || "");
-    const away = apiTeamToLocal(x?.awayTeam?.name || "");
-    const found = findMatchByTeams(home, away);
-    return found && found.id === m.id;
-  }) || null;
+  return null;
 }
 
 function apiStatusUpper(api){
@@ -635,12 +629,7 @@ function apiMinuteText(api, localMatch=null){
 }
 
 function apiLiveScoreHtml(m){
-  const api = getApiMatchForLocal(m);
-  if(!api || !apiStatusIsLive(api)) return "";
-  const sc = apiScoreForMatch(api);
-  const minute = apiMinuteText(api, m);
-  if(!sc) return `<div class="live-score-box">LIVE</div><div class="live-score-sub">${minute || "w trakcie"}</div>`;
-  return `<div class="live-score-box">${sc.h}:${sc.a}</div><div class="live-score-sub">${minute || "w trakcie"}</div>`;
+  return "";
 }
 
 function matchLiveStatus(m){
@@ -684,59 +673,14 @@ function isApiFinalStatus(shortStatus){
   return ["FT","AET","PEN"].includes(String(shortStatus||"").toUpperCase());
 }
 window.testApiLiveStatus=async function(){
-  try{
-    const res = await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
-    const data = await res.json();
-    const matches = Array.isArray(data.matches) ? data.matches : [];
-    apiMatchesCache = matches;
-
-    const counts = {};
-    matches.forEach(m=>{
-      const s = String(m.status || "BRAK").toUpperCase();
-      counts[s] = (counts[s] || 0) + 1;
-    });
-
-    const live = matches.filter(m=>apiStatusIsLive(m));
-    const examples = matches.slice(0,8).map(m=>{
-      const home=m.homeTeam?.name || "?";
-      const away=m.awayTeam?.name || "?";
-      const sc=apiScoreForMatch(m);
-      return `${m.status}: ${home} - ${away}${sc ? ` (${sc.h}:${sc.a})` : ""}`;
-    }).join("\n");
-
-    alert(
-      `Test API football-data.org\n\n` +
-      `Meczów: ${matches.length}\n` +
-      `Statusy: ${JSON.stringify(counts, null, 2)}\n` +
-      `Live teraz: ${live.length}\n\n` +
-      `Przykłady:\n${examples || "brak"}\n\n` +
-      `Jeśli Live teraz = 0, to API nie zwraca aktualnie żadnego meczu jako IN_PLAY/PAUSED.`
-    );
-
-    rerenderAll();
-  }catch(e){
-    alert("Błąd testu API live: " + (e.message || e));
-  }
+  alert("API jest wyłączone.");
 };
 
-
-
 async function refreshApiMatchesCache(){
-  try{
-    const res = await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
-    if(!res.ok) return;
-    const data = await res.json();
-    if(Array.isArray(data.matches)){
-      apiMatchesCache = data.matches;
-      rerenderAll();
-    }
-  }catch(e){
-    console.warn("Nie udało się odświeżyć statusów z API:", e);
-  }
+  return;
 }
 
-
-function liveScoreHtml(m){ return apiLiveScoreHtml(m); }
+function liveScoreHtml(m){ return ""; }
 
 
 function apiScoreForSimple(matchApi){
@@ -765,9 +709,7 @@ function apiStatusForLocalMatch(m){
 }
 
 
-function isApiUpdateLocked(matchId){
-  return Array.isArray(apiLockedMatchIds) && apiLockedMatchIds.includes(matchId);
-}
+function isApiUpdateLocked(matchId){ return false; }
 
 window.toggleApiLockForMatch=async function(matchId){
   if(!isAdmin()) return;
@@ -786,92 +728,16 @@ window.toggleApiLockForMatch=async function(matchId){
   rerenderAll();
 };
 
-function apiLockButtonHtml(matchId){
-  const locked=isApiUpdateLocked(matchId);
-  return `<button type="button" class="btn sm ${locked ? "danger" : ""}" onclick="toggleApiLockForMatch('${jsStr(matchId)}')" title="Blokada aktualizacji z API">
-    <i class="ti ${locked ? "ti-lock" : "ti-lock-open"}"></i> ${locked ? "API zablokowane" : "Blokuj API"}
-  </button>`;
-}
+function apiLockButtonHtml(matchId){ return ""; }
 
 async function autoUpdateResultsFromApi(showAlert=false){
-  try{
-    const res = await fetch(`${API_RESULTS_BASE}/api/worldcup-2026`, {cache:"no-store"});
-    const data = await res.json();
-
-    if(!res.ok || data.error){
-      if(showAlert) alert("Błąd API: " + (data.error || res.status));
-      return;
-    }
-
-    const matches = Array.isArray(data.matches) ? data.matches : [];
-    apiMatchesCache = matches;
-
-    let changed = 0;
-    let matched = 0;
-    let withScore = 0;
-    let finished = 0;
-    let live = 0;
-
-    matches.forEach(apiMatch=>{
-      const home = apiTeamToLocal(apiMatch?.homeTeam?.name || "");
-      const away = apiTeamToLocal(apiMatch?.awayTeam?.name || "");
-      const local = findMatchByTeams(home, away);
-      if(!local) return;
-
-      matched++;
-
-      const status = String(apiMatch?.status || "").toUpperCase();
-      if(status === "FINISHED") finished++;
-      if(status === "IN_PLAY" || status === "PAUSED" || status === "LIVE") live++;
-
-      if(isApiUpdateLocked(local.id)) return;
-
-      const score = apiScoreForSimple(apiMatch);
-      if(!score) return;
-
-      withScore++;
-
-      // Nadpisuj wynik zawsze, jeśli API daje inny wynik.
-      const old = officialResults[local.id];
-      if(!old || Number(old.h)!==score.h || Number(old.a)!==score.a){
-        officialResults[local.id] = {h:score.h, a:score.a};
-        changed++;
-      }
-    });
-
-    if(changed > 0){
-      await saveMain();
-      await loadSharedOnce();
-    }
-
-    rerenderAll();
-
-    if(changed > 0){
-      showToast(`✅ API zaktualizowało ${changed} wyników`, "success");
-    }
-
-    if(showAlert){
-      alert(
-        `API sprawdzone\n\n` +
-        `Meczów z API: ${matches.length}\n` +
-        `Dopasowano: ${matched}\n` +
-        `Mecze z wynikiem: ${withScore}\n` +
-        `Live: ${live}\n` +
-        `Zakończone: ${finished}\n` +
-        `Zmieniono w typerze: ${changed}`
-      );
-    }
-  }catch(e){
-    console.error("Auto API error:", e);
-    if(showAlert) alert("Nie udało się pobrać API: " + (e.message || e));
-  }
+  if(showAlert) alert("API jest wyłączone. Wyniki wpisuje admin ręcznie.");
+  return;
 }
 
-
-window.fetchAndSaveApiResults = async function(){
-  await autoUpdateResultsFromApi(true);
+window.fetchAndSaveApiResults=async function(){
+  alert("API jest wyłączone. Wyniki wpisuje admin ręcznie.");
 };
-
 
 function matchKickoffMs(m){
   if(m.kickoffUtc){
@@ -1053,7 +919,6 @@ async function enterApp(){
   document.getElementById("mainRole").textContent=isAdmin()?"Administrator":"Gracz";
   document.getElementById("adminTab").style.display=isAdmin()?"":"none";
   rerenderAll();
-  refreshApiMatchesCache();
 }
 
 function rerenderAll(){ if(!currentUser)return; renderDashboard(); renderChampionPicker(); renderMatchList(); renderResults(); renderLeaderboard(); renderBracket(); renderAllPredictions(); if(isAdmin()){ renderAdminList(); renderAdminEditPrediction(); } }
@@ -1715,7 +1580,6 @@ function renderAdminMatches(){
         <input class="sc" type="number" min="0" max="20" id="o_${m.id}_a" value="${off.a}" placeholder="–">
         <button class="btn sm" onclick="saveOfficialMatch('${jsStr(m.id)}')" title="Zapisz ten wynik"><i class="ti ti-device-floppy"></i></button>
         <button class="btn sm danger" onclick="clearOfficialMatch('${jsStr(m.id)}')" title="Wyczyść wynik"><i class="ti ti-x"></i></button>
-        ${apiLockButtonHtml(m.id)}
       </div>
       <span class="team r" style="font-size:12px">${teamName(m.a)}</span>`;
     list.appendChild(row);
@@ -2020,33 +1884,12 @@ setTimeout(()=>{ exposeClickFunctions(); bindLoginButtons(); }, 1200);
 exposeClickFunctions();
 bindLoginButtons();
 
-// === API WYŁĄCZONE — wyniki wpisuje admin ręcznie ===
-window.fetchAndSaveApiResults = async function(){
-  alert("API jest wyłączone. Wyniki wpisuje admin ręcznie.");
-};
-
-if(typeof autoUpdateResultsFromApi === "function"){
-  autoUpdateResultsFromApi = async function(showAlert=false){
-    if(showAlert) alert("API jest wyłączone. Wyniki wpisuje admin ręcznie.");
-    return;
-  };
-}
-
-if(typeof refreshApiMatchesCache === "function"){
-  refreshApiMatchesCache = async function(){ return; };
-}
-
-if(typeof getApiMatchForLocal === "function"){
-  getApiMatchForLocal = function(m){ return null; };
-}
-
-if(typeof apiLiveScoreHtml === "function"){
-  apiLiveScoreHtml = function(m){ return ""; };
-}
-
-if(typeof liveScoreHtml === "function"){
-  liveScoreHtml = function(m){ return ""; };
-}
+// API całkowicie wyłączone — wyniki wpisuje admin ręcznie
+try{
+  apiMatchesCache = [];
+  localStorage.removeItem("mundial2026_api_locked_match_ids");
+  sessionStorage.removeItem("mundial2026_api_locked_match_ids");
+}catch(e){}
 
 initFirebase().catch(e=>{
   showStartupError("Błąd startu aplikacji: " + (e.message || e));
